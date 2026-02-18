@@ -142,7 +142,7 @@ function bundleRustCode(binName: string): lambda.AssetCode {
             ],
             local: {
                 tryBundle(outputDir: string) {
-                    if (process.platform !== 'linux' || process.arch !== 'arm64') {
+                    if (process.platform !== 'linux') {
                         return false;
                     }
 
@@ -152,12 +152,18 @@ function bundleRustCode(binName: string): lambda.AssetCode {
                         // We must run the build inside the specific crate directory
                         const buildDir = path.join(workspacePath, cratePath);
 
-                        execSync(`cargo build --release --bin ${binName}`, {
+                        execSync(`cargo build --release --target aarch64-unknown-linux-gnu --bin ${binName}`, {
                             cwd: buildDir,
-                            stdio: 'inherit'
+                            stdio: 'inherit',
+                            env: {
+                                ...process.env,
+                                // Tell cargo to use the cross-compiler linker
+                                CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: 'aarch64-linux-gnu-gcc'
+                            }
                         });
 
-                        const binPath = path.join(buildDir, `target/release/${binName}`);
+
+                        const binPath = path.join(buildDir, `target/aarch64-unknown-linux-gnu/release/${binName}`);
                         if (!fs.existsSync(binPath)) {
                             console.error(`Binary ${binName} not found after build.`);
                             return false;
