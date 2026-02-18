@@ -1,0 +1,43 @@
+{
+  "name": "infrastructure",
+  "version": "0.1.0",
+  "bin": {
+    "cdk": "bin/cdk.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc -w",
+    "test": "jest",
+    "cdk": "cdk",
+    "cdklocal:bootstrap": "AWS_REGION=eu-central-1 AWS_DEFAULT_REGION=eu-central-1 AWS_ACCESS_KEY_ID=test AWS_SECRET_ACCESS_KEY=test AWS_ENDPOINT_URL=http://127.0.0.1:4566 AWS_ENDPOINT_URL_S3=http://127.0.0.1:4566 AWS_S3_FORCE_PATH_STYLE=true AWS_SDK_LOAD_CONFIG=1 cdk bootstrap aws://000000000000/eu-central-1 --cloudformation-execution-policies arn:aws:iam::aws:policy/AdministratorAccess",
+    "cdklocal:deploy": "AWS_REGION=eu-central-1 AWS_DEFAULT_REGION=eu-central-1 AWS_ACCESS_KEY_ID=test AWS_SECRET_ACCESS_KEY=test AWS_ENDPOINT_URL=http://127.0.0.1:4566 AWS_ENDPOINT_URL_S3=http://127.0.0.1:4566 AWS_S3_FORCE_PATH_STYLE=true AWS_SDK_LOAD_CONFIG=1 cdk deploy --require-approval never",
+    "format": "prettier --write .",
+    "check-format": "prettier --check ."
+  },
+  "supportedArchitectures": {
+    "os": [
+      "darwin",
+      "linux"
+    ],
+    "cpu": [
+      "x64",
+      "arm64"
+    ]
+  },
+  "devDependencies": {
+    "@types/jest": "30.0.0",
+    "@types/node": "25.2.3",
+    "aws-cdk": "2.1106.0",
+    "cdk-nag": "^2.37.55",
+    "jest": "30.2.0",
+    "prettier": "^3.8.1",
+    "ts-jest": "29.4.6",
+    "ts-node": "10.9.2",
+    "typescript": "5.9.3"
+  },
+  "dependencies": {
+    "aws-cdk-lib": "2.238.0",
+    "cargo-lambda-cdk": "^0.0.36",
+    "constructs": "^10.5.0"
+  }
+}

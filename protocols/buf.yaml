@@ -1,0 +1,9 @@
+version: v1
+lint:
+  use:
+    - STANDARD
+  except:
+    - PACKAGE_VERSION_SUFFIX   # Allows "package foo" instead of "package foo.v1"
+breaking:
+  use:
+    - FILE

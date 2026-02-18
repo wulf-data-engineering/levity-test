@@ -1,0 +1,150 @@
+name: Continuous Integration
+
+on:
+  pull_request:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  check-protocols:
+    name: Check Protocols
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: bufbuild/buf-setup-action@v1
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Lint protocols
+        uses: bufbuild/buf-lint-action@v1
+        with:
+          input: protocols
+      - name: Check breaking changes
+        uses: bufbuild/buf-breaking-action@v1
+        with:
+          input: protocols
+          against: https://github.com/${{ github.repository }}.git#branch=main,subdir=protocols
+  test-backend:
+    name: Test Backend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v5
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: pull-request
+          workspaces: ./backend -> target
+      - name: Install Rust
+        run: rustup toolchain install stable
+      - name: Install Protoc
+        uses: arduino/setup-protoc@v3
+      - name: Check formatting
+        id: format
+        run: cargo fmt -- --check
+      - name: Run checks
+        id: check
+        run: cargo check
+      - name: Run clippy
+        id: clippy
+        run: cargo clippy
+      - name: Install cargo-nextest
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-nextest
+      - name: Run unit tests
+        id: tests
+        run: cargo nextest run
+      - name: Aggregate results and fail if any failed
+        if: always() # ensure this runs even if earlier steps failed
+        run: |
+          echo "format outcome:   ${{ steps.format.outcome }}"
+          echo "check outcome:  ${{ steps.check.outcome }}"
+          echo "clippy outcome:  ${{ steps.clippy.outcome }}"
+          echo "tests outcome:  ${{ steps.tests.outcome }}"
+
+          # If any step outcome is 'failure' then fail the job
+          for s in "${{ steps.format.outcome }}" "${{ steps.check.outcome }}" "${{ steps.clippy.outcome }}" "${{ steps.tests.outcome }}"; do
+            if [ "$s" = "failure" ]; then
+              echo "One or more checks failed."
+              exit 1
+            fi
+          done
+
+          echo "All checks passed."
+  test-infrastructure:
+    name: Test Infrastructure
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: infrastructure
+    steps:
+      - uses: actions/checkout@v5
+      - name: Setup node
+        uses: actions/setup-node@v3
+        with:
+          node-version: "20"
+      - name: Install dependencies
+        run: npm ci
+      - name: Run tests
+        run: npm test
+  frontend:
+    name: Test Frontend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v5
+      - name: Setup node
+        uses: actions/setup-node@v3
+        with:
+          node-version: "20"
+      - name: Restore cache
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.npm
+            frontend/node_modules/
+          key: node-modules-cache-${{ hashFiles('frontend/package-lock.json') }}
+          restore-keys: node-modules-cache-
+      - name: Install Protoc
+        uses: arduino/setup-protoc@v3
+      - name: Install dependencies
+        run: npm ci
+      - name: Generate Protocol Buffer files
+        run: npm run gen:proto
+      - name: Check formatting
+        id: format
+        run: npm run check-format
+        continue-on-error: true
+      - name: Linting
+        id: lint
+        run: npm run lint
+        continue-on-error: true
+      - name: Check TypeScript
+        id: check
+        run: npm run check
+        continue-on-error: true
+      - name: Run unit tests
+        id: tests
+        run: npm run test:unit
+        continue-on-error: true
+      - name: Aggregate results and fail if any failed
+        if: always() # ensure this runs even if earlier steps failed
+        run: |
+          echo "lint outcome:   ${{ steps.lint.outcome }}"
+          echo "format outcome: ${{ steps.format.outcome }}"
+          echo "check outcome:  ${{ steps.check.outcome }}"
+          echo "tests outcome:  ${{ steps.tests.outcome }}"
+
+          # If any step outcome is 'failure' then fail the job
+          for s in "${{ steps.lint.outcome }}" "${{ steps.check.outcome }}" "${{ steps.tests.outcome }}"; do
+            if [ "$s" = "failure" ]; then
+              echo "One or more checks failed."
+              exit 1
+            fi
+          done
+
+          echo "All checks passed."

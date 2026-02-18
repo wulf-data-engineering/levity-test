@@ -1,0 +1,15 @@
+{
+  "LambdaClient": {
+    "endpoint": "http://host.docker.internal:9000",
+    "region": "eu-central-1",
+    "credentials": {
+      "accessKeyId": "test",
+      "secretAccessKey": "test"
+    }
+  },
+  "TriggerFunctions": {
+    "PreSignUp": "cognito-handler",
+    "PostConfirmation": "cognito-handler",
+    "CustomMessage": "cognito-handler"
+  }
+}

@@ -1,0 +1,54 @@
+[package]
+name = "backend"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = "1.0.101"
+tokio = { version = "1.49.0", features = ["macros"] }
+lambda_runtime = "1"
+lambda_http = "1"
+tracing-subscriber = "0.3.20"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+prost = "0.14"
+protocol_macro = { path = "src/protocol-macro" }
+snap = "1"
+aws-config = "1"
+aws-credential-types = "1"
+aws_lambda_events = { version = "1", default-features = false, features = ["sqs", "cognito"] }
+aws-sdk-cognitoidentityprovider = "1"
+aws-sdk-dynamodb = "1"
+serde_dynamo = { version = "4", features = ["aws-sdk-dynamodb+1"] }
+schemars = "1.2"
+chrono = { version = "0.4", features = ["serde"] }
+wiremock = "0.6.5"
+base64 = "0.21"
+
+[dev-dependencies]
+expectorate = "1"
+
+[build-dependencies]
+prost-build = "0.14"
+prost-types = "0.14"
+prost = "0.14"
+
+[[bin]]
+name = "password-policy"
+path = "src/password-policy.rs"
+
+[[bin]]
+name = "cognito-handler"
+path = "src/cognito-handler.rs"
+
+[[bin]]
+name = "message-handler"
+path = "src/message-handler.rs"
+
+[[bin]]
+name = "user-profile"
+path = "src/user-profile.rs"
+
+[profile.release]
+codegen-units = 1 # Reduce binary size by compiling all code in one unit
+lto = "fat" # Enable best link-time optimization to reduce binary size

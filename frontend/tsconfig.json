@@ -1,0 +1,20 @@
+{
+	"extends": "./.svelte-kit/tsconfig.json",
+	"compilerOptions": {
+		"composite": true, // required for config references below
+		"target": "es2020", // modern JS: async/await, optional chaining
+		"lib": ["es2020", "DOM", "DOM.Iterable"], // modern JS + browser APIs
+		"strict": true, // full type safety
+		"moduleResolution": "bundler",
+		"isolatedModules": true, // helps Vite check files individually
+		"skipLibCheck": true, // Note: Skipping library checks hides potential type errors in dependencies
+		"types": ["node", "svelte", "playwright", "@testing-library/jest-dom"]
+	},
+
+	// Path aliases are handled by https://svelte.dev/docs/kit/configuration#alias
+	// except $lib which is handled by https://svelte.dev/docs/kit/configuration#files
+	//
+	// To make changes to top-level options such as include and exclude, we recommend extending
+	// the generated config; see https://svelte.dev/docs/kit/configuration#typescript
+	"references": [{ "path": "./tsconfig.config.json" }, { "path": "./tsconfig.e2e.json" }]
+}
