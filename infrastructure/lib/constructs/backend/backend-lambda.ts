@@ -11,6 +11,7 @@ import {DeploymentConfig} from "../../config";
 export interface BackendLambdaProps extends lambda.FunctionOptions {
     deploymentConfig: DeploymentConfig,
     binaryName: string; // The name of the [[bin]] in Cargo.toml
+    environment?: { [key: string]: string }; // Environment variables
 }
 
 /**
