@@ -41,8 +41,12 @@ jobs:
 
       - uses: Swatinem/rust-cache@v2
         with:
-          workspaces: ./backend
+          prefix-key: "stage-aarch64"
+          workspaces: "./backend -> target"
           cache-on-failure: true
+
+      - name: Debug Cache Content
+        run: ls -R backend/target || echo "Target directory not found"
 
       - name: Install Protoc
         uses: arduino/setup-protoc@v3
