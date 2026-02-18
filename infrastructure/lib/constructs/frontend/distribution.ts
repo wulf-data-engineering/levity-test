@@ -29,9 +29,13 @@ export class FrontendDistribution extends Construct {
     if (domainConfig) {
       const { domainName, hostedZone } = domainConfig;
 
-      certificate = new acm.Certificate(this, "SiteCert", {
+      // CloudFront requires the certificate to be in us-east-1
+      // We use DnsValidatedCertificate (despite deprecation) because it works cross-region
+      // in a single stack via a custom resource.
+      certificate = new acm.DnsValidatedCertificate(this, "SiteCert", {
         domainName: domainName,
-        validation: acm.CertificateValidation.fromDns(hostedZone),
+        hostedZone: hostedZone,
+        region: "us-east-1",
       });
     }
 
