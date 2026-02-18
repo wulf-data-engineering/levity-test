@@ -119,7 +119,7 @@ export class Identity extends Construct {
       // Ensure the Waiter runs AFTER the DKIM records are created
       // (The records must be in Route53 for SES to verify)
       sesIdentity.dkimRecords.forEach((record, index) => {
-         const dkimRecord = this.node.tryFindChild(`DkimRecord${index}`) as cdk.Construct;
+         const dkimRecord = this.node.tryFindChild(`DkimRecord${index}`) as Construct;
          if(dkimRecord) {
              verifier.node.addDependency(dkimRecord);
          }
@@ -149,7 +149,7 @@ export class Identity extends Construct {
         // We can't access 'verifier' scope here easily without restructuring block,
         // so we find it or move definition out. 
         // Let's refactor slightly to expose verifier.
-        const verifier = this.node.tryFindChild("SesVerifier") as cdk.CustomResource;
+        const verifier = this.node.tryFindChild("SesVerifier") as Construct;
         if (verifier) {
             this.userPool.node.addDependency(verifier);
         }
