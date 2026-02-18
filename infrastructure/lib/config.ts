@@ -90,6 +90,18 @@ export function loadDeploymentConfig(scope: Construct): DeploymentConfig {
     };
   }
 
+  if (mode === "stage") {
+    return {
+      mode: "environment",
+      aws: true,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+      autoDeleteObjects: true,
+      terminationProtection: false,
+      domain,
+      skipBuild,
+    };
+  }
+
   return {
     mode: "environment",
     aws: true,
