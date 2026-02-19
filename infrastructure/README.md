@@ -90,6 +90,18 @@ You can use the `/initial-setup` workflow to let the agent guide you through the
 
 The foundation stack is deployed once to set up the account.
 
+First, bootstrap the environment (if not already done):
+
+```bash
+npx cdk bootstrap \
+  --profile <profile> \
+  -c domain=<domain> \
+  -c githubRepo=<org/repo> \
+  -c skipBuild=true
+```
+
+Then deploy the stack:
+
 ```bash
 npx cdk deploy FoundationStack \
   --profile <profile> \
