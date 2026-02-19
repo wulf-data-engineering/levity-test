@@ -73,3 +73,16 @@ Summarize artifact in final output.
 If there are missing dependencies ask to proceed with implementation plan.
 Clarify what you d at "proceed" and what dev has to do.
 If there are none there is no need to proceed: Workflow done.
+
+# Git Repo Check
+
+Check if the repository is connected to a remote:
+
+```bash
+git remote -v
+```
+
+If no remote is configured (empty output), suggest running the initial setup workflow:
+
+> It seems this is a fresh project without a connected repository.
+> Please run `/initial-setup` to configure your GitHub repository and AWS environment.

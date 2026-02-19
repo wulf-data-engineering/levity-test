@@ -12,6 +12,9 @@ import { Table } from "aws-cdk-lib/aws-dynamodb";
 interface IdentityProps {
   deploymentConfig: DeploymentConfig;
   usersTable: Table;
+  // Optional: Pass existing network resources
+  hostedZone?: route53.IHostedZone;
+  sesIdentity?: ses.IEmailIdentity;
 }
 
 export class Identity extends Construct {
@@ -34,96 +37,55 @@ export class Identity extends Construct {
     props.usersTable.grantReadWriteData(this.cognitoHandler);
 
     let userPoolEmail: cognito.UserPoolEmail | undefined = undefined;
+    let verifier: cdk.CustomResource | undefined = undefined; // Declare verifier here to make it accessible later
 
     // --- domain & email setup ---
     if (props.deploymentConfig.domain) {
-      const { domainName, hostedZone } = props.deploymentConfig.domain;
+      const { domainName, hostedZone: hostedZoneConfig } = props.deploymentConfig.domain;
 
-      // create SES Identity (verifies the domain for sending), same region as the pool required
-      const sesIdentity = new ses.EmailIdentity(this, "SesIdentity", {
-        identity: ses.Identity.domain(domainName),
-        dkimSigning: true,
-      });
+      let hostedZone = props.hostedZone;
+      let sesIdentity = props.sesIdentity;
 
-      // add DKIM Records to Route53 (required for deliverability)
-      // proves domain ownership and prevents emails from going to spam
-      sesIdentity.dkimRecords.forEach((record, index) => {
-        new route53.CnameRecord(this, `DkimRecord${index}`, {
-          zone: hostedZone,
-          recordName: record.name,
-          domainName: record.value,
+      // Create resources if not passed in
+      if (!hostedZone && hostedZoneConfig) {
+         // Fallback or self-managed mode (e.g. Sandbox)
+         hostedZone = hostedZoneConfig; 
+      }
+
+      let dkimRecordsCreatedHere: Construct[] = [];
+      let newIdentity: ses.EmailIdentity | undefined;
+
+      if (!sesIdentity) {
+          // Create SES Identity (verifies the domain for sending), same region as the pool required
+          newIdentity = new ses.EmailIdentity(this, "SesIdentity", {
+            identity: ses.Identity.domain(domainName),
+            dkimSigning: true,
+          });
+          sesIdentity = newIdentity;
+          
+          // Only create DKIM records if we are creating the identity AND have the zone
+          if (hostedZone) {
+               // add DKIM Records to Route53 (required for deliverability)
+               newIdentity.dkimRecords.forEach((record, index) => {
+                 new route53.CnameRecord(this, `DkimRecord${index}`, {
+                   zone: hostedZone as route53.IHostedZone,
+                   recordName: record.name,
+                   domainName: record.value,
+                 });
+               });
+          }
+      }
+      
+      // If we have an identity (passed or created), use it for UserPool
+      if (sesIdentity) {
+        // Configure User Pool to use this SES Identity
+        userPoolEmail = cognito.UserPoolEmail.withSES({
+            sesRegion: cdk.Stack.of(this).region,
+            fromEmail: `no-reply@${domainName}`, // Use dynamic domain name
+            fromName: "Tool-Set Project",
+            replyTo: `no-reply@${domainName}`,
         });
-      });
-
-      // Configure User Pool to use this SES Identity
-      userPoolEmail = cognito.UserPoolEmail.withSES({
-        sesRegion: cdk.Stack.of(this).region, // Must match stack region
-        fromEmail: `no-reply@levity-test.wulf.technology`,
-        fromName: "Tool-Set Project",
-        replyTo: `no-reply@levity-test.wulf.technology`,
-      });
-
-      // --- Race Condition Fix ---
-      // Cognito requires the email to be verified immediately upon creation.
-      // SES DNS verification takes time. We need a waiter.
-      const verifier = new cdk.CustomResource(this, "SesVerifier", {
-        serviceToken: new lambda.Function(this, "SesVerifierLambda", {
-          runtime: lambda.Runtime.NODEJS_20_X,
-          handler: "index.handler",
-          timeout: cdk.Duration.minutes(15), // Allow enough time for DNS propagation
-          code: lambda.Code.fromInline(`
-            const { SESClient, GetIdentityVerificationAttributesCommand } = require("@aws-sdk/client-ses");
-            const ses = new SESClient();
-
-            exports.handler = async (event) => {
-              if (event.RequestType === 'Delete') return { PhysicalResourceId: event.PhysicalResourceId };
-
-              const identity = event.ResourceProperties.Identity;
-              const maxRetries = 40; // ~4-5 minutes
-              const delay = 5000;
-
-              for (let i = 0; i < maxRetries; i++) {
-                try {
-                  console.log("Checking verification status for:", identity);
-                  const data = await ses.send(new GetIdentityVerificationAttributesCommand({ Identities: [identity] }));
-                  const attrs = data.VerificationAttributes[identity];
-                  
-                  if (attrs && attrs.VerificationStatus === 'Success') {
-                   console.log("Verified!");
-                   return { PhysicalResourceId: "ses-verifier-" + identity };
-                  }
-                  console.log("Status:", attrs ? attrs.VerificationStatus : "Unknown", "- Retrying...");
-                } catch (e) {
-                  console.log("Error checking status:", e);
-                }
-                await new Promise(r => setTimeout(r, delay));
-              }
-              throw new Error("SES Identity verification timed out for " + identity);
-            };
-          `),
-          initialPolicy: [
-            new cdk.aws_iam.PolicyStatement({
-              actions: ["ses:GetIdentityVerificationAttributes"],
-              resources: ["*"],
-            }),
-          ],
-        }).functionArn,
-        properties: {
-          Identity: domainName,
-          // Add a random property to force re-check on update if needed, 
-          // or rely on Identity change.
-          Timestamp: new Date().toISOString(), 
-        },
-      });
-
-      // Ensure the Waiter runs AFTER the DKIM records are created
-      // (The records must be in Route53 for SES to verify)
-      sesIdentity.dkimRecords.forEach((record, index) => {
-         const dkimRecord = this.node.tryFindChild(`DkimRecord${index}`) as Construct;
-         if(dkimRecord) {
-             verifier.node.addDependency(dkimRecord);
-         }
-      });
+      }
     }
 
     this.userPool = new cognito.UserPool(this, "UserPool", {
@@ -143,17 +105,6 @@ export class Identity extends Construct {
       },
       removalPolicy: props.deploymentConfig.removalPolicy,
     });
-    
-    // Ensure UserPool waits for the Verifier
-    if (props.deploymentConfig.domain) {
-        // We can't access 'verifier' scope here easily without restructuring block,
-        // so we find it or move definition out. 
-        // Let's refactor slightly to expose verifier.
-        const verifier = this.node.tryFindChild("SesVerifier") as Construct;
-        if (verifier) {
-            this.userPool.node.addDependency(verifier);
-        }
-    }
 
     this.userPoolClient = new cognito.UserPoolClient(this, "UserPoolClient", {
       userPool: this.userPool,

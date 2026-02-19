@@ -1,7 +1,7 @@
 import * as cdk from 'aws-cdk-lib';
 import { Annotations, Match } from 'aws-cdk-lib/assertions';
 import { AwsSolutionsChecks, NagSuppressions } from 'cdk-nag';
-import * as Cdk from '../lib/cdk-stack';
+import * as Cdk from '../lib/app-stack';
 
 test('No Unsuppressed Security Errors', () => {
   delete process.env.AWS_ENDPOINT_URL;
@@ -19,7 +19,7 @@ test('No Unsuppressed Security Errors', () => {
       skipBuild: true,
     },
   });
-  const stack = new Cdk.CdkStack(app, 'CdkTestStack');
+  const stack = new Cdk.AppStack(app, 'CdkTestStack');
 
   cdk.Aspects.of(stack).add(new AwsSolutionsChecks({ verbose: true }));
 

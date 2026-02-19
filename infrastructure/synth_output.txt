@@ -1,0 +1,196 @@
+DKIM Record 0: ${Token[TOKEN.21]}
+DKIM Record 0 replaced: ${Token[TOKEN.21]}
+DKIM Record 1: ${Token[TOKEN.22]}
+DKIM Record 1 replaced: ${Token[TOKEN.22]}
+DKIM Record 2: ${Token[TOKEN.23]}
+DKIM Record 2 replaced: ${Token[TOKEN.23]}
+[WARNING] aws-cdk-lib.aws_certificatemanager.DnsValidatedCertificate is deprecated.
+  use {@link Certificate } instead
+  This API will be removed in the next major release.
+Resources:
+  HostedZoneDB99F866:
+    Type: AWS::Route53::HostedZone
+    Properties:
+      Name: levity-test.wulf.technology.
+    Metadata:
+      aws:cdk:path: FoundationStack/HostedZone/Resource
+  SesIdentity3ED17C37:
+    Type: AWS::SES::EmailIdentity
+    Properties:
+      DkimAttributes:
+        SigningEnabled: true
+      EmailIdentity: levity-test.wulf.technology
+    Metadata:
+      aws:cdk:path: FoundationStack/SesIdentity/Resource
+  DkimRecord07BE77F4F:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId:
+        Ref: HostedZoneDB99F866
+      Name:
+        Fn::Join:
+          - ""
+          - - Fn::GetAtt:
+                - SesIdentity3ED17C37
+                - DkimDNSTokenName1
+            - .levity-test.wulf.technology.
+      ResourceRecords:
+        - Fn::GetAtt:
+            - SesIdentity3ED17C37
+            - DkimDNSTokenValue1
+      TTL: "1800"
+      Type: CNAME
+    Metadata:
+      aws:cdk:path: FoundationStack/DkimRecord0/Resource
+  DkimRecord106FDF84B:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId:
+        Ref: HostedZoneDB99F866
+      Name:
+        Fn::Join:
+          - ""
+          - - Fn::GetAtt:
+                - SesIdentity3ED17C37
+                - DkimDNSTokenName2
+            - .levity-test.wulf.technology.
+      ResourceRecords:
+        - Fn::GetAtt:
+            - SesIdentity3ED17C37
+            - DkimDNSTokenValue2
+      TTL: "1800"
+      Type: CNAME
+    Metadata:
+      aws:cdk:path: FoundationStack/DkimRecord1/Resource
+  DkimRecord2C41042AD:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId:
+        Ref: HostedZoneDB99F866
+      Name:
+        Fn::Join:
+          - ""
+          - - Fn::GetAtt:
+                - SesIdentity3ED17C37
+                - DkimDNSTokenName3
+            - .levity-test.wulf.technology.
+      ResourceRecords:
+        - Fn::GetAtt:
+            - SesIdentity3ED17C37
+            - DkimDNSTokenValue3
+      TTL: "1800"
+      Type: CNAME
+    Metadata:
+      aws:cdk:path: FoundationStack/DkimRecord2/Resource
+  GitHubOIDCProvider4F328116:
+    Type: Custom::AWSCDKOpenIdConnectProvider
+    Properties:
+      ServiceToken:
+        Fn::GetAtt:
+          - CustomAWSCDKOpenIdConnectProviderCustomResourceProviderHandlerF2C543E0
+          - Arn
+      ClientIDList:
+        - sts.amazonaws.com
+      Url: https://token.actions.githubusercontent.com
+      RejectUnauthorized: true
+      CodeHash: d75c48c9f82cde63e9bf414df335e84e8ac24f11eb34889be255b702aec71e50
+    UpdateReplacePolicy: Delete
+    DeletionPolicy: Delete
+    Metadata:
+      aws:cdk:path: FoundationStack/GitHubOIDCProvider/Resource/Default
+  CustomAWSCDKOpenIdConnectProviderCustomResourceProviderRole517FED65:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+      ManagedPolicyArns:
+        - Fn::Sub: arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: Inline
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Resource: "*"
+                Action:
+                  - iam:CreateOpenIDConnectProvider
+                  - iam:DeleteOpenIDConnectProvider
+                  - iam:UpdateOpenIDConnectProviderThumbprint
+                  - iam:AddClientIDToOpenIDConnectProvider
+                  - iam:RemoveClientIDFromOpenIDConnectProvider
+    Metadata:
+      aws:cdk:path: FoundationStack/Custom::AWSCDKOpenIdConnectProviderCustomResourceProvider/Role
+  CustomAWSCDKOpenIdConnectProviderCustomResourceProviderHandlerF2C543E0:
+    Type: AWS::Lambda::Function
+    Properties:
+      Code:
+        S3Bucket: cdk-hnb659fds-assets-190059852932-eu-central-1
+        S3Key: d75c48c9f82cde63e9bf414df335e84e8ac24f11eb34889be255b702aec71e50.zip
+      Timeout: 900
+      MemorySize: 128
+      Handler: __entrypoint__.handler
+      Role:
+        Fn::GetAtt:
+          - CustomAWSCDKOpenIdConnectProviderCustomResourceProviderRole517FED65
+          - Arn
+      Runtime: nodejs22.x
+    DependsOn:
+      - CustomAWSCDKOpenIdConnectProviderCustomResourceProviderRole517FED65
+    Metadata:
+      aws:cdk:path: FoundationStack/Custom::AWSCDKOpenIdConnectProviderCustomResourceProvider/Handler
+      aws:asset:path: asset.d75c48c9f82cde63e9bf414df335e84e8ac24f11eb34889be255b702aec71e50
+      aws:asset:property: Code
+  GitHubActionRole5D264369:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRoleWithWebIdentity
+            Condition:
+              StringLike:
+                token.actions.githubusercontent.com:sub: repo:wulf-data-engineering/levity-test:*
+            Effect: Allow
+            Principal:
+              Federated:
+                Ref: GitHubOIDCProvider4F328116
+        Version: "2012-10-17"
+      Description: Role for GitHub Actions to deploy stacks
+      ManagedPolicyArns:
+        - Fn::Join:
+            - ""
+            - - "arn:"
+              - Ref: AWS::Partition
+              - :iam::aws:policy/AdministratorAccess
+      RoleName: GitHubActionRole
+    Metadata:
+      aws:cdk:path: FoundationStack/GitHubActionRole/Resource
+  CDKMetadata:
+    Type: AWS::CDK::Metadata
+    Properties:
+      Analytics: v2:deflate64:H4sIAAAAAAAA/+WS3U4bMRCFn4W5RI4LiSq1uQsRErkAouSuK1QZe1gNsWdW/gGl1r57leyGFngErmwdn+9ofOypns5+6Isz85om1u0mnh513WZjd8q8pt81Ssn4fabrujx6sjeSMrpfwthU+COMdyYgzOEcevVReFDLJ/4HqCWbgBu0Et0IH30K4lF7AxU4CYb4U/RXsB9LG0raYu5VwqTrdTDkVw45U943FWjcnjJ2FLbUMnEL8xwLDinvqF6RCbred8grtxRmtHkd5YUcxqZCiX4Ms56Q88ql0zwb8YfHNimVgO5qD/MKXSS21Bm/sFYK55EdPAdgYTMJjw2Aw2QjdW+Sgij+/dcxzt0aNi26tXiye5g3FcL/yiKOeQ9jSeKx79WypCxhg0lKtNjAOYwVDsKH89OVr0xCtUgJ8zablrg9MPcldyX3isWhfk7fXqYX+vKnnp09J6JJLJwpoN4M61+iuZRTOQMAAA==
+    Metadata:
+      aws:cdk:path: FoundationStack/CDKMetadata/Default
+Outputs:
+  GitHubRoleArn:
+    Description: ARN of the GitHub Actions Role
+    Value:
+      Fn::GetAtt:
+        - GitHubActionRole5D264369
+        - Arn
+  ExportsOutputRefHostedZoneDB99F8662BBAE844:
+    Value:
+      Ref: HostedZoneDB99F866
+    Export:
+      Name: FoundationStack:ExportsOutputRefHostedZoneDB99F8662BBAE844
+Parameters:
+  BootstrapVersion:
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: /cdk-bootstrap/hnb659fds/version
+    Description: Version of the CDK Bootstrap resources in this environment, automatically retrieved from SSM Parameter Store. [cdk:skip]
+
+5 feature flags are not configured. Run 'cdk flags --unstable=flags' to learn more.

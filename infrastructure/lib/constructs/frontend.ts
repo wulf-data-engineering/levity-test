@@ -5,12 +5,14 @@ import {FrontendStorage} from './frontend/storage';
 import {FrontendDeployment} from './frontend/deployment';
 import {DeploymentConfig} from "../config";
 import {FrontendDistribution} from "./frontend/distribution";
+import * as route53 from "aws-cdk-lib/aws-route53";
 
 interface FrontendProps {
     config: DeploymentConfig;
     backendApi?: apigateway.RestApi; // optionally forwards /api to backend API
     userPool?: cognito.IUserPool
     userPoolClient?: cognito.IUserPoolClient
+    hostedZone?: route53.IHostedZone
 }
 
 export class Frontend extends Construct {
@@ -26,7 +28,8 @@ export class Frontend extends Construct {
             new FrontendDistribution(this, 'Distribution', {
                 deploymentConfig,
                 siteBucket: storage.siteBucket,
-                backendApi: props.backendApi
+                backendApi: props.backendApi,
+                hostedZone: props.hostedZone
             });
 
         new FrontendDeployment(this, 'Deployment', {

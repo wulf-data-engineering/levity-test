@@ -75,5 +75,6 @@ jobs:
         run: |
           npx cdk deploy --all --require-approval never \
             -c mode=stage \
-            -c domain=levity-test.wulf.technology \
-            -c hostedZoneId=${{ secrets.HOSTED_ZONE_ID_STAGING }}
+            -c domain=${{ secrets.DOMAIN_STAGING }} \
+            -c hostedZoneId=${{ secrets.HOSTED_ZONE_ID_STAGING }} \
+            -c githubRepo=${{ github.repository }}
