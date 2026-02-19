@@ -76,7 +76,7 @@ jobs:
       - name: CDK Deploy
         working-directory: infrastructure
         run: |
-          npx cdk deploy --all --require-approval never \
+          npx cdk deploy AppStack --require-approval never \
             -c mode=stage \
             -c domain=${{ secrets.DOMAIN_STAGING }} \
             -c hostedZoneId=${{ secrets.HOSTED_ZONE_ID_STAGING }} \

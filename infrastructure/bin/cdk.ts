@@ -16,14 +16,7 @@ const foundationStack = new FoundationStack(app, 'FoundationStack', {
     env
 });
 
-new AppStack(app, 'CdkStack', { // Keep stack name 'CdkStack' for now to avoid rapid drift/issues with existing deployments, or rename to AppStack if we want a clean break. User said 'AppStack' in plan.
-    // Actually, sticking to 'CdkStack' name for the App stack might be confusing if we renamed the class.
-    // Let's use 'AppStack' as ID, but maybe we need consistency.
-    // User already has 'CdkStack' deployed (stuck).
-    // If we change ID to 'AppStack', CDK will try to create NEW stack and delete OLD key.
-    // Since old key is stuck, maybe a new name IS better to bypass it?
-    // User said "The stack will never be deployed together."
-    // Let's call it 'AppStack' to be clean.
+new AppStack(app, 'AppStack', {
     env,
     hostedZone: foundationStack.hostedZone,
     sesIdentity: foundationStack.sesIdentity
