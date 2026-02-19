@@ -64,7 +64,7 @@ jobs:
         working-directory: backend
         # Explicitely build for the target platform to populate cache and fail fast
         run: |
-          cargo build --target aarch64-unknown-linux-gnu
+          cargo build --release --target aarch64-unknown-linux-gnu
         env:
           CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
 
