@@ -117,7 +117,8 @@ function bundleRustCode(binName: string): lambda.AssetCode {
     const hostTargetDir = path.join(workspacePath, relativeCratePath, 'target', 'docker-cargo-target');
 
     // We keep the registry in the workspace root target to share downloads across crates/projects if needed
-    const hostRegistryDir = path.join(workspacePath, 'target', 'docker-cargo-registry');
+    // CHANGED: Redirect to backend/target to avoid polluting the root directory
+    const hostRegistryDir = path.join(cratePath, 'target', 'docker-cargo-registry');
 
     return lambda.Code.fromAsset(workspacePath, {
         exclude,
