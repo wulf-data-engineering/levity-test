@@ -23,7 +23,7 @@ serde_dynamo = { version = "4", features = ["aws-sdk-dynamodb+1"] }
 schemars = "1.2"
 chrono = { version = "0.4", features = ["serde"] }
 wiremock = "0.6.5"
-base64 = "0.21"
+base64 = "0.22"
 
 [dev-dependencies]
 expectorate = "1"
