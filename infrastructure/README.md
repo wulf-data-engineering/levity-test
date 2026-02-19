@@ -93,11 +93,7 @@ The foundation stack is deployed once to set up the account.
 First, bootstrap the environment (if not already done):
 
 ```bash
-npx cdk bootstrap \
-  --profile <profile> \
-  -c domain=<domain> \
-  -c githubRepo=<org/repo> \
-  -c skipBuild=true
+npx cdk bootstrap --profile [profile] -c skipBuild=true
 ```
 
 Then deploy the stack:

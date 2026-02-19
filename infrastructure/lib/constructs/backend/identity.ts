@@ -14,7 +14,6 @@ interface IdentityProps {
   usersTable: Table;
   // Optional: Pass existing network resources
   hostedZone?: route53.IHostedZone;
-  sesIdentity?: ses.IEmailIdentity;
 }
 
 export class Identity extends Construct {
@@ -41,51 +40,16 @@ export class Identity extends Construct {
 
     // --- domain & email setup ---
     if (props.deploymentConfig.domain) {
-      const { domainName, hostedZone: hostedZoneConfig } = props.deploymentConfig.domain;
+      const { domainName } = props.deploymentConfig.domain;
 
-      let hostedZone = props.hostedZone;
-      let sesIdentity = props.sesIdentity;
-
-      // Create resources if not passed in
-      if (!hostedZone && hostedZoneConfig) {
-         // Fallback or self-managed mode (e.g. Sandbox)
-         hostedZone = hostedZoneConfig; 
-      }
-
-      let dkimRecordsCreatedHere: Construct[] = [];
-      let newIdentity: ses.EmailIdentity | undefined;
-
-      if (!sesIdentity) {
-          // Create SES Identity (verifies the domain for sending), same region as the pool required
-          newIdentity = new ses.EmailIdentity(this, "SesIdentity", {
-            identity: ses.Identity.domain(domainName),
-            dkimSigning: true,
-          });
-          sesIdentity = newIdentity;
-          
-          // Only create DKIM records if we are creating the identity AND have the zone
-          if (hostedZone) {
-               // add DKIM Records to Route53 (required for deliverability)
-               newIdentity.dkimRecords.forEach((record, index) => {
-                 new route53.CnameRecord(this, `DkimRecord${index}`, {
-                   zone: hostedZone as route53.IHostedZone,
-                   recordName: record.name,
-                   domainName: record.value,
-                 });
-               });
-          }
-      }
-      
-      // If we have an identity (passed or created), use it for UserPool
-      if (sesIdentity) {
-        // Configure User Pool to use this SES Identity
-        userPoolEmail = cognito.UserPoolEmail.withSES({
-            sesRegion: cdk.Stack.of(this).region,
-            fromEmail: `no-reply@${domainName}`, // Use dynamic domain name
-            fromName: "Tool-Set Project",
-            replyTo: `no-reply@${domainName}`,
-        });
-      }
+      // We assume the identity name is the domain name and it was created by FoundationStack
+      // We just need to reference it to configure the User Pool valid sender
+      userPoolEmail = cognito.UserPoolEmail.withSES({
+          sesRegion: cdk.Stack.of(this).region,
+          fromEmail: `no-reply@${domainName}`,
+          fromName: "Tool-Set Project",
+          replyTo: `no-reply@${domainName}`,
+      });
     }
 
     this.userPool = new cognito.UserPool(this, "UserPool", {

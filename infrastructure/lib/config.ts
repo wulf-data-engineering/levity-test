@@ -66,19 +66,22 @@ export function loadDeploymentConfig(scope: Construct): DeploymentConfig {
     };
   }
 
-  const domainName = scope.node.getContext("domain");
+  const domainName = scope.node.tryGetContext("domain");
 
   // hosted zone is required for the AppStack but has to be optional for the FoundationStack
   let hostedZone: route53.IHostedZone | undefined;
   const hostedZoneId = scope.node.tryGetContext("hostedZoneId");
-  if (hostedZoneId) {
+  if (hostedZoneId && domainName) {
     hostedZone = route53.HostedZone.fromHostedZoneAttributes(scope, "Zone", {
       hostedZoneId: scope.node.getContext("hostedZoneId"),
       zoneName: domainName,
     });
   }
 
-  const domain = { domainName, hostedZone };
+  let domain: DomainConfig | undefined;
+  if (domainName) {
+      domain = { domainName, hostedZone };
+  }
 
   return {
     mode: "environment",

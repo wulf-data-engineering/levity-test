@@ -2,7 +2,6 @@
 import * as cdk from 'aws-cdk-lib';
 import { AppStack } from '../lib/app-stack';
 import { FoundationStack } from '../lib/foundation-stack';
-import { loadDeploymentConfig } from '../lib/config';
 
 const app = new cdk.App();
 const isLocal = process.env.AWS_ENDPOINT_URL?.startsWith('http://') ?? false;
@@ -12,12 +11,9 @@ const env = {
     region: isLocal ? 'eu-central-1' : process.env.CDK_DEFAULT_REGION
 };
 
-const foundationStack = new FoundationStack(app, 'FoundationStack', {
-    env
-});
+const githubRepo = app.node.tryGetContext("githubRepo");
+if (githubRepo) {
+    new FoundationStack(app, 'FoundationStack', { env });
+}
 
-new AppStack(app, 'AppStack', {
-    env,
-    hostedZone: foundationStack.hostedZone,
-    sesIdentity: foundationStack.sesIdentity
-});
+new AppStack(app, 'AppStack', { env });

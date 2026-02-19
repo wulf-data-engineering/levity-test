@@ -12,7 +12,6 @@ import { AttributeType, ProjectionType } from "aws-cdk-lib/aws-dynamodb";
 export interface BackendProps {
     config: DeploymentConfig;
     hostedZone?: route53.IHostedZone;
-    sesIdentity?: ses.IEmailIdentity;
 }
 
 /**
@@ -49,8 +48,7 @@ export class Backend extends Construct {
             const identity = new Identity(this, 'Identity', {
                 deploymentConfig,
                 usersTable,
-                hostedZone: props.hostedZone,
-                sesIdentity: props.sesIdentity
+                hostedZone: props.hostedZone
             });
 
             this.userPool = identity.userPool;

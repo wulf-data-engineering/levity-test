@@ -53,11 +53,7 @@ Deploy the `FoundationStack` to set up the base infrastructure.
    # Run from infrastructure directory
    cd infrastructure
 
-   npx cdk bootstrap \
-     --profile <user-profile> \
-     -c skipBuild=true \
-     -c domain=<domain-name> \
-     -c githubRepo=<org/repo>
+   npx cdk bootstrap --profile $AWS_PROFILE -c skipBuild=true
 
    npx cdk deploy FoundationStack \
      --profile <user-profile> \
