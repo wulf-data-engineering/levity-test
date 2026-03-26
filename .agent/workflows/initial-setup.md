@@ -1,5 +1,5 @@
 ---
-description: Initial setup guide (GitHub repository, AWS account, foundation stack, Github secrets)
+description: Initial setup guide (GitHub repository, AWS account, foundation stack, Github variables and secrets)
 ---
 
 # Initial Setup
@@ -7,6 +7,11 @@ description: Initial setup guide (GitHub repository, AWS account, foundation sta
 Guide the user through the steps you as an agent together with the user have to do to set up the project.
 
 // turbo-all
+
+## Formatting
+
+Suggest to run formatter in backend and frontend because value substitution in cookiecutter not necessarily produces formatted code.
+
 
 ## Connect to GitHub Repository
 
@@ -73,22 +78,24 @@ Guide the user to configure their DNS.
 2.  **Notify the User**: Provide the NS records and ask them to update their domain registrar.
 3.  Explain that they must wait for propagation (usually minutes).
 
-## Configure GitHub Secrets
+## Configure GitHub Secrets and Variables
 
-Offer to store the secrets in the GitHub repository using the `gh` CLI.
+Offer to store them in the GitHub repository using the `gh` CLI.
 
 1.  Check if `gh` is installed (`gh --version`).
-2.  If installed, ask the user if they want you to set the secrets automatically.
+2.  If installed, ask the user if they want you to set them automatically.
 3.  If yes, run:
 
     ```bash
     # Login check
     gh auth status || gh auth login
 
-    # Set Secrets
-    gh secret set HOSTED_ZONE_ID_STAGING -b"<HostedZoneId>" -R <org/repo>
+    # Set Variables (Non-sensitive)
+    gh variable set HOSTED_ZONE_ID_STAGING -b"<HostedZoneId>" -R <org/repo>
+    gh variable set DOMAIN_STAGING -b"<domain-name>" -R <org/repo>
+
+    # Set Secrets (Sensitive)
     gh secret set AWS_ROLE_ARN_STAGING -b"<GitHubRoleArn>" -R <org/repo>
-    gh secret set DOMAIN_STAGING -b"<domain-name>" -R <org/repo>
     ```
 
 ## Verify

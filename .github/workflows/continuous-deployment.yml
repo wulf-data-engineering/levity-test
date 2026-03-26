@@ -79,6 +79,6 @@ jobs:
         run: |
           npx cdk deploy AppStack --require-approval never \
             -c mode=stage \
-            -c domain=${{ secrets.DOMAIN_STAGING }} \
-            -c hostedZoneId=${{ secrets.HOSTED_ZONE_ID_STAGING }} \
+            -c domain=${{ vars.DOMAIN_STAGING }} \
+            -c hostedZoneId=${{ vars.HOSTED_ZONE_ID_STAGING }} \
             -c githubRepo=${{ github.repository }}

@@ -15,6 +15,11 @@ export class AppStack extends cdk.Stack {
         super(scope, id, props);
 
         const config = loadDeploymentConfig(this);
+        
+        if (config.mode === "environment" && (!config.domain || !config.domain.hostedZone)) {
+            throw new Error("AppStack requires 'domain' and 'hostedZoneId' context variables to be defined when deployed to a stage environment.");
+        }
+
         this.terminationProtection = config.terminationProtection;
 
         const backend = new Backend(this, 'Backend', {
