@@ -42,7 +42,9 @@ jobs:
         uses: arduino/setup-protoc@v3
       - name: Check formatting
         id: format
-        run: cargo fmt -- --check
+        run: |
+          rustup check
+          cargo fmt -- --check
       - name: Run checks
         id: check
         run: cargo check
