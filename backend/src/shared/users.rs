@@ -53,7 +53,10 @@ impl UserRepo {
             .client
             .get_item()
             .table_name(&self.table_name)
-            .key("pk", aws_sdk_dynamodb::types::AttributeValue::S(username.to_string()))
+            .key(
+                "pk",
+                aws_sdk_dynamodb::types::AttributeValue::S(username.to_string()),
+            )
             .send()
             .await?;
 
