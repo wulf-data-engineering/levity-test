@@ -37,7 +37,7 @@ jobs:
           shared-key: pull-request
           workspaces: ./backend -> target
       - name: Install Rust
-        run: rustup toolchain install stable
+        run: rustup show # picks the version from rust-toolchain.toml
       - name: Install Protoc
         uses: arduino/setup-protoc@v3
       - name: Check formatting

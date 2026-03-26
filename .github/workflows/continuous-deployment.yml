@@ -30,7 +30,7 @@ jobs:
       #             infrastructure/package-lock.json
 
       - name: Install Rust
-        run: rustup toolchain install stable
+        run: rustup show # picks the version from rust-toolchain.toml
 
       - name: Setup Cross-Compilation
         run: |
