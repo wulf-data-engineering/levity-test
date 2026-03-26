@@ -14,20 +14,20 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # - name: Configure AWS credentials
-      #   uses: aws-actions/configure-aws-credentials@v4
-      #   with:
-      #     role-to-assume: ${{ secrets.AWS_ROLE_ARN_STAGING }}
-      #     aws-region: eu-central-1
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN_STAGING }}
+          aws-region: eu-central-1
 
-      #       - name: Setup Node.js
-      #         uses: actions/setup-node@v3
-      #         with:
-      #           node-version: "20"
-      #           cache: "npm"
-      #           cache-dependency-path: |
-      #             frontend/package-lock.json
-      #             infrastructure/package-lock.json
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: |
+            frontend/package-lock.json
+            infrastructure/package-lock.json
 
       - uses: Swatinem/rust-cache@v2
         with:
@@ -54,13 +54,13 @@ jobs:
       - name: Install Protoc
         uses: arduino/setup-protoc@v3
 
-      #       - name: Install dependencies (Infrastructure)
-      #         working-directory: ./infrastructure
-      #         run: npm ci
+      - name: Install dependencies (Infrastructure)
+        working-directory: ./infrastructure
+        run: npm ci
 
-      #       - name: Install dependencies (Frontend)
-      #         working-directory: ./frontend
-      #         run: npm ci
+      - name: Install dependencies (Frontend)
+        working-directory: ./frontend
+        run: npm ci
 
       - name: Pre-compile Backend
         working-directory: backend
@@ -74,11 +74,11 @@ jobs:
         run: |
           ls -R backend/target || echo "Target directory not found"
 
-#       - name: CDK Deploy
-#         working-directory: ./infrastructure
-#         run: |
-#           npx cdk deploy AppStack --require-approval never \
-#             -c mode=stage \
-#             -c domain=${{ secrets.DOMAIN_STAGING }} \
-#             -c hostedZoneId=${{ secrets.HOSTED_ZONE_ID_STAGING }} \
-#             -c githubRepo=${{ github.repository }}
+      - name: CDK Deploy
+        working-directory: ./infrastructure
+        run: |
+          npx cdk deploy AppStack --require-approval never \
+            -c mode=stage \
+            -c domain=${{ secrets.DOMAIN_STAGING }} \
+            -c hostedZoneId=${{ secrets.HOSTED_ZONE_ID_STAGING }} \
+            -c githubRepo=${{ github.repository }}
