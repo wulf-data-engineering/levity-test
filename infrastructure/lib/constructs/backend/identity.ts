@@ -49,6 +49,7 @@ export class Identity extends Construct {
           fromEmail: `no-reply@${domainName}`,
           fromName: "Tool-Set Project",
           replyTo: `no-reply@${domainName}`,
+          sesVerifiedDomain: domainName,
       });
     }
 
