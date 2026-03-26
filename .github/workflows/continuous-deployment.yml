@@ -29,35 +29,37 @@ jobs:
       #             frontend/package-lock.json
       #             infrastructure/package-lock.json
 
-      - name: Install Rust
-        run: rustup show # picks the version from rust-toolchain.toml
-
-      - name: Setup Cross-Compilation
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y gcc-aarch64-linux-gnu
-          rustup target add aarch64-unknown-linux-gnu
-
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: ./backend
           cache-on-failure: true
 
+      - name: Install Rust
+        working-directory: ./backend
+        run: rustup show # picks the version from rust-toolchain.toml
+
+      - name: Setup Cross-Compilation
+        working-directory: ./backend
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-aarch64-linux-gnu
+          rustup target add aarch64-unknown-linux-gnu
+
       - name: Debug Cache Content
+        working-directory: ./backend
         run: |
           ls -la
-          ls -la backend
-          ls -R backend/target || echo "Target directory not found"
+          ls -R target/ || echo "Target directory not found"
 
       - name: Install Protoc
         uses: arduino/setup-protoc@v3
 
       #       - name: Install dependencies (Infrastructure)
-      #         working-directory: infrastructure
+      #         working-directory: ./infrastructure
       #         run: npm ci
 
       #       - name: Install dependencies (Frontend)
-      #         working-directory: frontend
+      #         working-directory: ./frontend
       #         run: npm ci
 
       - name: Pre-compile Backend
@@ -73,7 +75,7 @@ jobs:
           ls -R backend/target || echo "Target directory not found"
 
 #       - name: CDK Deploy
-#         working-directory: infrastructure
+#         working-directory: ./infrastructure
 #         run: |
 #           npx cdk deploy AppStack --require-approval never \
 #             -c mode=stage \
