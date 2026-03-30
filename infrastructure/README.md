@@ -2,10 +2,10 @@
 
 The infrastructure is defined using **AWS CDK** in **TypeScript**.
 
-It is split into two stacks to separate persistent resources from the application lifecycle:
+It is split into three stacks to separate persistent resources from the application lifecycle:
 
 1.  **FoundationStack**: Persistent resources (HostedZone, SES Identity, OIDC Provider). Deployed infrequently.
-2.  **CertificateStack**: Cross-region resources (ACM in us-east-1).
+2.  **CertificateStack**: Cross-region resources (ACM in us-east-1). Deployed together with the app stack.
 3.  **AppStack**: The application resources (Backend, Frontend). Deployed frequently via CI/CD.
 
 ## Configuration
@@ -37,7 +37,7 @@ There are three modes of deployment defined in [lib/config.ts](lib/config.ts).
 Deploys against an **AWS** account, typically by CI/CD into an environment like _production_ or _staging_.
 
 - **FoundationStack**: Contains stateful resources (Hosted Zone, SES). Termination protection is enabled. Requires `domain` and `githubRepo`.
-- **CertificateStack**: Contains the ACM Certificate deployed to us-east-1.
+- **CertificateStack**: Contains the ACM Certificate deployed to us-east-1. Requires `domain`.
 - **AppStack**: Contains the application (Backend, Frontend). Termination protection is enabled. Requires `domain` and `hostedZone`.
 
 ### sandbox (`cdk deploy -c mode=sandbox`)
