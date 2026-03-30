@@ -6,6 +6,7 @@ import * as cdk from 'aws-cdk-lib';
 import * as fs from 'fs';
 import * as logs from 'aws-cdk-lib/aws-logs';
 import {execSync} from 'child_process';
+import * as os from 'os';
 import {DeploymentConfig} from "../../config";
 
 export interface BackendLambdaProps extends lambda.FunctionOptions {
@@ -78,6 +79,16 @@ function rustLambda(scope: Construct, id: string, props: BackendLambdaProps) {
     let code: lambda.Code;
     if (props.deploymentConfig.skipBuild) {
         code = lambda.Code.fromAsset(path.join(process.cwd(), 'stub'));
+    } else if (props.deploymentConfig.backendPath) {
+        // Find the specific binary from the pre-built backend path
+        const binPath = path.resolve(process.cwd(), props.deploymentConfig.backendPath, props.binaryName);
+        if (!fs.existsSync(binPath)) throw new Error(`Pre-built binary not found: ${binPath}`);
+        
+        // AWS Lambda custom runtimes require the binary to be named 'bootstrap'
+        const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), `lambda-${props.binaryName}-`));
+        fs.copyFileSync(binPath, path.join(tempDir, 'bootstrap'));
+        fs.chmodSync(path.join(tempDir, 'bootstrap'), 0o755);
+        code = lambda.Code.fromAsset(tempDir);
     } else {
         code = bundleRustCode(props.binaryName);
     }

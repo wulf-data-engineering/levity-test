@@ -15,6 +15,8 @@ export interface DeploymentConfig {
   terminationProtection: boolean;
   domain?: DomainConfig;
   skipBuild?: boolean;
+  backendPath?: string;
+  frontendPath?: string;
 }
 
 /**
@@ -91,6 +93,8 @@ export function loadDeploymentConfig(scope: Construct): DeploymentConfig {
     autoDeleteObjects: false,
     terminationProtection: true,
     domain,
-    skipBuild
+    skipBuild,
+    backendPath: scope.node.tryGetContext("backendPath"),
+    frontendPath: scope.node.tryGetContext("frontendPath"),
   };
 }

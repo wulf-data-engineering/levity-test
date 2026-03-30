@@ -33,50 +33,67 @@ If not:
 
 ## AWS Account Setup
 
-Explain to the user that a **fresh AWS account** is required.
+Explain to the user that **two AWS accounts** are required for a proper staging and production separation.
 
-Ask the user to sign up for a new account or create a sub-account.
-Ask the user to log in via CLI:
+Ask the user to create or sign in to:
+1.  A **Staging** AWS Account
+2.  A **Production** AWS Account
+
+Ask the user to configure SSO logins and profiles for both via CLI:
 
     ```bash
-    aws configure sso
-    # OR
-    aws configure
+    aws configure sso --profile levity-test-staging
+    aws configure sso --profile levity-test-production
     ```
 
-Ask for the user profile.
+## Deploy FoundationStacks (Cross-Account Setup)
 
-## Deploy FoundationStack
+Deploy the `FoundationStack` to set up the base infrastructure for both accounts. **Order is critical here!**
 
-Deploy the `FoundationStack` to set up the base infrastructure.
-
-1. The domain name is levity-test.wulf.technology (TODO: replace with %[ cookiecutter.domain_name ]% during backporting)
-2. Derive the GitHub org/repo name from the `git remote -v` check earlier
-3. Run the deployment:
+### 1. Bootstrap Staging Account First
+1. The domain name for staging is: `staging.levity-test.wulf.technology`
+2. Run the deployment against the staging profile:
 
    ```bash
-   # Run from infrastructure directory
    cd infrastructure
-
-   npx cdk bootstrap --profile $AWS_PROFILE -c skipBuild=true
+   npx cdk bootstrap --profile levity-test-staging -c skipBuild=true -c domain=staging.levity-test.wulf.technology
 
    npx cdk deploy FoundationStack \
-     --profile <user-profile> \
+     --profile levity-test-staging \
      --require-approval never \
      -c skipBuild=true \
-     -c domain=<domain-name> \
+     -c domain=staging.levity-test.wulf.technology \
      -c githubRepo=<org/repo>
    ```
 
-**Action:** Capture the `HostedZoneId` and `GitHubRoleArn` from the outputs.
+**Action:** Capture the `HostedZoneId`, `GitHubRoleArn`, and crucially, the **`HostedZoneNameServers`** from the Staging deployment outputs.
 
-## Configure DNS
+### 2. Bootstrap Production Account Second (with DNS Delegation)
+1. The domain name for production is: `levity-test.wulf.technology`
+2. Run the deployment against the production profile, passing the Staging Name Servers for DNS delegation:
 
-Guide the user to configure their DNS.
+   ```bash
+   npx cdk bootstrap --profile levity-test-production -c skipBuild=true -c domain=levity-test.wulf.technology
 
-1.  Retrieve the Name Servers (NS) from the created Hosted Zone.
-2.  **Notify the User**: Provide the NS records and ask them to update their domain registrar.
-3.  Explain that they must wait for propagation (usually minutes).
+   npx cdk deploy FoundationStack \
+     --profile levity-test-production \
+     --require-approval never \
+     -c skipBuild=true \
+     -c domain=levity-test.wulf.technology \
+     -c githubRepo=<org/repo> \
+     -c stagingNameServers="ns-XXXX.awsdns-XX.org, ns-YYYY.awsdns-YY.co.uk, ..." # Use comma-separated list from Step 1
+   ```
+
+**Action:** Capture the `HostedZoneNameServers` from the **Production** deployment outputs.
+
+## Configure DNS at Registrar
+
+Guide the user to configure their DNS registrar.
+
+1.  **Notify the User**: Provide the 4 **Production** NS records from the second deployment.
+2.  Ask them to configure these 4 Name Servers as the Custom DNS for the root domain `levity-test.wulf.technology` at their registrar.
+3.  Explain that they do *not* configure the staging NS records at the registrar; the production AWS account is now delegating traffic to them automatically.
+4.  Wait for propagation (usually minutes).
 
 ## Configure GitHub Secrets and Variables
 

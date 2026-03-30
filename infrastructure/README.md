@@ -5,7 +5,8 @@ The infrastructure is defined using **AWS CDK** in **TypeScript**.
 It is split into two stacks to separate persistent resources from the application lifecycle:
 
 1.  **FoundationStack**: Persistent resources (HostedZone, SES Identity, OIDC Provider). Deployed infrequently.
-2.  **AppStack**: The application resources (Backend, Frontend). Deployed frequently via CI/CD.
+2.  **CertificateStack**: Cross-region resources (ACM in us-east-1).
+3.  **AppStack**: The application resources (Backend, Frontend). Deployed frequently via CI/CD.
 
 ## Configuration
 
@@ -36,6 +37,7 @@ There are three modes of deployment defined in [lib/config.ts](lib/config.ts).
 Deploys against an **AWS** account, typically by CI/CD into an environment like _production_ or _staging_.
 
 - **FoundationStack**: Contains stateful resources (Hosted Zone, SES). Termination protection is enabled. Requires `domain` and `githubRepo`.
+- **CertificateStack**: Contains the ACM Certificate deployed to us-east-1.
 - **AppStack**: Contains the application (Backend, Frontend). Termination protection is enabled. Requires `domain` and `hostedZone`.
 
 ### sandbox (`cdk deploy -c mode=sandbox`)
@@ -77,7 +79,7 @@ cdk --version  # to verify installation
 ## Useful commands
 
 - `cdk bootstrap`: bootstrap the environment
-- `cdk deploy FoundationStack|AppStack`: deploys one of the stacks
+- `cdk deploy FoundationStack|CertificateStack|AppStack`: deploys one of the stacks
 - `cdk diff`: compare deployed stack with current state
 - `cdk synth`: emits the synthesized CloudFormation template
 - `npm run test`: perform the jest unit tests
@@ -123,7 +125,7 @@ Store the outputs in GitHub Secrets:
 The app stack is deployed frequently, usually via GitHub Actions.
 
 ```bash
-npx cdk deploy AppStack \
+npx cdk deploy CertificateStack AppStack \
   --profile <profile> \
   -c domain=<domain> \
   -c hostedZoneId=<id>
@@ -131,7 +133,7 @@ npx cdk deploy AppStack \
 
 ## Deploy to a sandbox AWS account
 
-Just deploy the app stack without domain or hosted zone.
+Just deploy the app stack without domain, hosted zone and therefore no certificate.
 
 ```bash
 npx cdk deploy AppStack \

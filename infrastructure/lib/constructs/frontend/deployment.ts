@@ -32,6 +32,8 @@ export class FrontendDeployment extends Construct {
         let assetSource: s3deploy.ISource;
         if (props.deploymentConfig.skipBuild) {
             assetSource = s3deploy.Source.asset(path.join(process.cwd(), 'stub/frontend'));
+        } else if (props.deploymentConfig.frontendPath) {
+            assetSource = s3deploy.Source.asset(path.resolve(process.cwd(), props.deploymentConfig.frontendPath));
         } else {
             assetSource = s3deploy.Source.asset(frontendPath, {
                 exclude: ['node_modules', 'build', '.svelte-kit', 'dist', '.git'],

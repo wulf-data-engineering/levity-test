@@ -63,5 +63,28 @@ export class FoundationStack extends cdk.Stack {
         value: githubRole.roleArn,
         description: 'ARN of the GitHub Actions Role',
     });
+
+    if (this.hostedZone.hostedZoneNameServers) {
+        new cdk.CfnOutput(this, 'HostedZoneNameServers', {
+            value: cdk.Fn.join(',', this.hostedZone.hostedZoneNameServers),
+            description: 'Name Servers for the Hosted Zone. Provide these to the parent domain registrar or delegation record.',
+        });
+    }
+    
+    new cdk.CfnOutput(this, 'HostedZoneId', {
+        value: this.hostedZone.hostedZoneId,
+        description: 'Hosted Zone ID for this environment. Provide this to the AppStack GitHub Actions variables.',
+    });
+
+    // Cross-Account Staging Delegation
+    const stagingNameServersStr = scope.node.tryGetContext("stagingNameServers");
+    if (stagingNameServersStr) {
+      const stagingNameServers = stagingNameServersStr.split(',').map((ns: string) => ns.trim());
+      new route53.ZoneDelegationRecord(this, 'StagingDelegation', {
+        zone: this.hostedZone,
+        recordName: 'staging',
+        nameServers: stagingNameServers,
+      });
+    }
   }
 }

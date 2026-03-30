@@ -13,6 +13,7 @@ interface FrontendProps {
     userPool?: cognito.IUserPool
     userPoolClient?: cognito.IUserPoolClient
     hostedZone?: route53.IHostedZone
+    certificateArn?: string
 }
 
 export class Frontend extends Construct {
@@ -29,7 +30,8 @@ export class Frontend extends Construct {
                 deploymentConfig,
                 siteBucket: storage.siteBucket,
                 backendApi: props.backendApi,
-                hostedZone: props.hostedZone
+                hostedZone: props.hostedZone,
+                certificateArn: props.certificateArn
             });
 
         new FrontendDeployment(this, 'Deployment', {

@@ -7,7 +7,7 @@ import * as route53 from "aws-cdk-lib/aws-route53";
 import * as ses from "aws-cdk-lib/aws-ses";
 
 interface AppStackProps extends cdk.StackProps {
-    // No direct resource props needed
+    certificateArn?: string;
 }
 
 export class AppStack extends cdk.Stack {
@@ -16,10 +16,6 @@ export class AppStack extends cdk.Stack {
 
         const config = loadDeploymentConfig(this);
         
-        if (config.mode === "environment" && (!config.domain || !config.domain.hostedZone)) {
-            throw new Error("AppStack requires 'domain' and 'hostedZoneId' context variables to be defined when deployed to a stage environment.");
-        }
-
         this.terminationProtection = config.terminationProtection;
 
         const backend = new Backend(this, 'Backend', {
@@ -34,7 +30,8 @@ export class AppStack extends cdk.Stack {
                 backendApi: backend.restApi,
                 userPool: backend.userPool,
                 userPoolClient: backend.userPoolClient,
-                hostedZone: config.domain?.hostedZone
+                hostedZone: config.domain?.hostedZone,
+                certificateArn: props?.certificateArn
             });
         }
     }

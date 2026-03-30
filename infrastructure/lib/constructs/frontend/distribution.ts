@@ -8,12 +8,14 @@ import * as s3 from "aws-cdk-lib/aws-s3";
 import { DeploymentConfig } from "../../config";
 import { BehaviorOptions } from "aws-cdk-lib/aws-cloudfront";
 import * as route53 from "aws-cdk-lib/aws-route53";
+import * as targets from "aws-cdk-lib/aws-route53-targets";
 
 interface DistributionProps {
   deploymentConfig: DeploymentConfig;
   siteBucket: s3.IBucket;
   backendApi?: apigateway.RestApi;
   hostedZone?: route53.IHostedZone;
+  certificateArn?: string;
 }
 
 export class FrontendDistribution extends Construct {
@@ -35,31 +37,16 @@ export class FrontendDistribution extends Construct {
       // In split stack, props.hostedZone is the IHostedZone object.
       let hostedZone = props.hostedZone;
 
-      if (!hostedZone && hostedZoneConfig) {
-          // Fallback if not passed (legacy/monolith mode)
-          // valid logic would be to look it up or create public zone construct here if we were not splitting.
-          // For now, let's assume we use the config to find it if not passed.
-          // But `hostedZoneConfig` in `DomainConfig` is likely just ID? No, looking at config.ts might reveal it.
-          // Actually, in `identity.ts` I saw `hostedZone` in `domainConfig` usage.
-          // Let's assume for now we prioritization props.hostedZone.
-          // If we don't have it, `DnsValidatedCertificate` needs a hosted zone.
-          // If we leave it undefined, it might fail or we might need to look it up.
-          // However, for this task, the goal is to use the PASSED one.
-          
-          // Force usage of passed hostedZone if in split stack.
-          // If not passed, we might be in trouble if we don't look it up.
-          // Let's try to look it up if we have the ID from config?
-          // For simplicity, let's assume successful propagation.
-      }
-
-      if (hostedZone) {
-        // CloudFront requires the certificate to be in us-east-1
-        // We use DnsValidatedCertificate (despite deprecation) because it works cross-region
-        // in a single stack via a custom resource.
-        certificate = new acm.DnsValidatedCertificate(this, "SiteCert", {
+      if (props.certificateArn) {
+        certificate = acm.Certificate.fromCertificateArn(
+          this,
+          "ImportedCert",
+          props.certificateArn
+        );
+      } else if (hostedZone) {
+        certificate = new acm.Certificate(this, "SiteCert", {
             domainName: domainName,
-            hostedZone: hostedZone,
-            region: "us-east-1",
+            validation: acm.CertificateValidation.fromDns(hostedZone),
         });
       }
     }
@@ -187,5 +174,23 @@ export class FrontendDistribution extends Construct {
         : `https://${this.distribution.distributionDomainName}`,
       description: "CloudFront URL",
     });
+
+    if (props.hostedZone && domainConfig) {
+      new route53.ARecord(this, "SiteAliasRecord", {
+        zone: props.hostedZone,
+        recordName: domainConfig.domainName,
+        target: route53.RecordTarget.fromAlias(
+          new targets.CloudFrontTarget(this.distribution)
+        ),
+      });
+
+      new route53.AaaaRecord(this, "SiteAaaaAliasRecord", {
+        zone: props.hostedZone,
+        recordName: domainConfig.domainName,
+        target: route53.RecordTarget.fromAlias(
+          new targets.CloudFrontTarget(this.distribution)
+        ),
+      });
+    }
   }
 }
