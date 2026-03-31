@@ -80,6 +80,10 @@
 	},
 	"dependencies": {
 		"@aws-amplify/auth": "^6.19.1",
+		"@bufbuild/protobuf": "^2.2.3",
+		"@bufbuild/protoc-gen-es": "^2.2.3",
+		"@connectrpc/connect": "^2.0.0",
+		"@connectrpc/connect-web": "^2.0.0",
 		"amazon-cognito-identity-js": "^6.3.15",
 		"aws-amplify": "^6.16.2",
 		"snappyjs": "^0.7.0"

@@ -3,6 +3,7 @@ import { Construct } from 'constructs';
 import * as route53 from 'aws-cdk-lib/aws-route53';
 import * as ses from 'aws-cdk-lib/aws-ses';
 import * as iam from 'aws-cdk-lib/aws-iam';
+import * as ecr from 'aws-cdk-lib/aws-ecr';
 
 export class FoundationStack extends cdk.Stack {
   public readonly hostedZone?: route53.IHostedZone;
@@ -134,5 +135,19 @@ export class FoundationStack extends cdk.Stack {
         nameServers: stagingNameServers,
       });
     }
+
+    // ECR Repository for the standalone server
+    // TODO: Port to %[cookiecutter.project_slug]%/server
+    new ecr.Repository(this, 'ServerRepository', {
+      repositoryName: 'levity-test/server',
+      removalPolicy: cdk.RemovalPolicy.DESTROY, // Usually FoundationStack is kept, but allow cleanup for this test
+      autoDeleteImages: true,
+      lifecycleRules: [
+        {
+          maxImageCount: 5,
+          description: 'Keep only 5 last images',
+        },
+      ],
+    });
   }
 }

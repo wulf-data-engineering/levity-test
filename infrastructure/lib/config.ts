@@ -39,9 +39,12 @@ export interface DeploymentConfig {
  * - API Gateway is omitted (replaced by direct calls to cargo lambda watch)
  */
 export function loadDeploymentConfig(scope: Construct): DeploymentConfig {
-  const skipBuild =
-    scope.node.tryGetContext('skipBuild') === true ||
-    scope.node.tryGetContext('skipBuild') === 'true';
+  const rawSkipBuild = scope.node.tryGetContext('skipBuild');
+  const skipBuild = rawSkipBuild === true || rawSkipBuild === 'true' || process.env.SKIP_BUILD === 'true';
+  
+  if (skipBuild) {
+    console.log(`[CDK] skipBuild is ENABLED for construct: ${scope.node.id}`);
+  }
 
   // Check for Localstack & Lambda Proxy mode
   const awsEndpointUrl = process.env.AWS_ENDPOINT_URL;

@@ -3,6 +3,7 @@ import * as apigateway from 'aws-cdk-lib/aws-apigateway';
 import * as cognito from 'aws-cdk-lib/aws-cognito';
 import { Api } from './backend/api';
 import { Identity } from './backend/identity';
+import { Server } from './backend/server';
 import { DeploymentConfig } from '../config';
 import * as route53 from 'aws-cdk-lib/aws-route53';
 import * as ses from 'aws-cdk-lib/aws-ses';
@@ -53,10 +54,15 @@ export class Backend extends Construct {
       this.userPool = identity.userPool;
       this.userPoolClient = identity.userPoolClient;
 
+      const server = new Server(this, 'Server', {
+        deploymentConfig,
+      });
+
       const api = new Api(this, 'Api', {
         deploymentConfig,
         userPool: this.userPool,
         usersTable,
+        server,
       });
       this.restApi = api.gateway;
     }

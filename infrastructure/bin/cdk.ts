@@ -7,9 +7,9 @@ import { CertificateStack } from '../lib/certificate-stack';
 const app = new cdk.App();
 const isLocal = process.env.AWS_ENDPOINT_URL?.startsWith('http://') ?? false;
 
-const env = {
-  account: isLocal ? '000000000000' : process.env.CDK_DEFAULT_ACCOUNT,
-  region: isLocal ? 'eu-central-1' : process.env.CDK_DEFAULT_REGION,
+const env: cdk.Environment = {
+  account: isLocal ? '000000000000' : (process.env.CDK_DEFAULT_ACCOUNT || process.env.AWS_ACCOUNT_ID),
+  region: isLocal ? 'eu-central-1' : (process.env.CDK_DEFAULT_REGION || process.env.AWS_REGION || process.env.AWS_DEFAULT_REGION),
 };
 
 const githubRepo = app.node.tryGetContext('githubRepo');
