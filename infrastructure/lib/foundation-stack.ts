@@ -55,9 +55,47 @@ export class FoundationStack extends cdk.Stack {
         roleName: 'GitHubActionRole'
     });
 
-    // Grant permissions to deploy CDK stacks
-    // For now, let's give AdministratorAccess.
-    githubRole.addManagedPolicy(iam.ManagedPolicy.fromAwsManagedPolicyName('AdministratorAccess'));
+    // Grant limited permissions to deploy CDK stacks instead of AdministratorAccess
+    githubRole.addToPolicy(new iam.PolicyStatement({
+        actions: ['sts:AssumeRole'],
+        resources: ['arn:aws:iam::*:role/cdk-*'], // Allow assuming CDK execution roles
+        effect: iam.Effect.ALLOW
+    }));
+
+    githubRole.addToPolicy(new iam.PolicyStatement({
+        actions: ['cloudformation:*'],
+        resources: ['*'],
+        effect: iam.Effect.ALLOW
+    }));
+
+    githubRole.addToPolicy(new iam.PolicyStatement({
+        actions: ['s3:*', 'ecr:*', 'ssm:GetParameter*'],
+        resources: ['*'],
+        effect: iam.Effect.ALLOW
+    }));
+
+    // Explicitly Deny highly sensitive or destructive structural changes
+    githubRole.addToPolicy(new iam.PolicyStatement({
+        actions: [
+            'iam:CreateUser',
+            'iam:DeleteUser',
+            'iam:CreateAccessKey',
+            'iam:DeleteAccessKey',
+            'organizations:*',
+            'account:*',
+            'billing:*',
+            'route53:DeleteHostedZone',
+            'cloudtrail:StopLogging',
+            'cloudtrail:DeleteTrail',
+            'backup:Delete*',
+            'dynamodb:DeleteBackup',
+            'rds:DeleteDBCluster',
+            'rds:DeleteDBInstance',
+            's3:DeleteBucket'
+        ],
+        resources: ['*'],
+        effect: iam.Effect.DENY
+    }));
 
     new cdk.CfnOutput(this, 'GitHubRoleArn', {
         value: githubRole.roleArn,

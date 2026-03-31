@@ -56,9 +56,10 @@ Deploy the `FoundationStack` to set up the base infrastructure for both accounts
 
    ```bash
    cd infrastructure
-   npx cdk bootstrap --profile levity-test-staging -c skipBuild=true -c domain=staging.levity-test.wulf.technology
+   npx cdk bootstrap aws://unknown-account/eu-central-1 aws://unknown-account/us-east-1 \
+     --profile levity-test-staging
 
-   npx cdk deploy FoundationStack \
+   npx cdk deploy FoundationStack CertificateStack \
      --profile levity-test-staging \
      --require-approval never \
      -c skipBuild=true \
@@ -73,9 +74,11 @@ Deploy the `FoundationStack` to set up the base infrastructure for both accounts
 2. Run the deployment against the production profile, passing the Staging Name Servers for DNS delegation:
 
    ```bash
-   npx cdk bootstrap --profile levity-test-production -c skipBuild=true -c domain=levity-test.wulf.technology
+   cd infrastructure
+   npx cdk bootstrap aws://unknown-account/eu-central-1 aws://unknown-account/us-east-1 \
+     --profile levity-test-production
 
-   npx cdk deploy FoundationStack \
+   npx cdk deploy FoundationStack CertificateStack \
      --profile levity-test-production \
      --require-approval never \
      -c skipBuild=true \

@@ -5,7 +5,7 @@ The infrastructure is defined using **AWS CDK** in **TypeScript**.
 It is split into three stacks to separate persistent resources from the application lifecycle:
 
 1.  **FoundationStack**: Persistent resources (HostedZone, SES Identity, OIDC Provider). Deployed infrequently.
-2.  **CertificateStack**: Cross-region resources (ACM in us-east-1). Deployed together with the app stack.
+2.  **CertificateStack**: Cross-region resources (ACM in us-east-1). Deployed initially alongside FoundationStack.
 3.  **AppStack**: The application resources (Backend, Frontend). Deployed frequently via CI/CD.
 
 ## Configuration
@@ -101,7 +101,7 @@ npx cdk bootstrap --profile [profile] -c skipBuild=true
 Then deploy the stack:
 
 ```bash
-npx cdk deploy FoundationStack \
+npx cdk deploy FoundationStack CertificateStack \
   --profile <profile> \
   -c domain=<domain> \
   -c githubRepo=<org/repo> \
@@ -125,7 +125,7 @@ Store the outputs in GitHub Secrets:
 The app stack is deployed frequently, usually via GitHub Actions.
 
 ```bash
-npx cdk deploy CertificateStack AppStack \
+npx cdk deploy AppStack \
   --profile <profile> \
   -c domain=<domain> \
   -c hostedZoneId=<id>

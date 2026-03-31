@@ -40,12 +40,6 @@ jobs:
         working-directory: ./infrastructure
         run: npm ci
 
-      - name: Bootstrap CDK Environments
-        working-directory: ./infrastructure
-        run: |
-          ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
-          npx cdk bootstrap aws://$ACCOUNT_ID/eu-central-1 aws://$ACCOUNT_ID/us-east-1
-
       - name: Download Backend Artifacts
         uses: actions/download-artifact@v4
         with:
@@ -61,7 +55,7 @@ jobs:
       - name: CDK Deploy for ${{ inputs.domain }} (${{ inputs.hostedZoneId }})
         working-directory: ./infrastructure
         run: |
-          npx cdk deploy CertificateStack AppStack --require-approval never \
+          npx cdk deploy AppStack --require-approval never \
             -c mode=stage \
             -c domain=${{ inputs.domain }} \
             -c hostedZoneId=${{ inputs.hostedZoneId }} \
