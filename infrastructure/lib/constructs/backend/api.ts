@@ -1,15 +1,18 @@
 import { Construct } from 'constructs';
+import * as cdk from 'aws-cdk-lib';
 import * as apigateway from 'aws-cdk-lib/aws-apigateway';
 import { backendLambdaApi } from './backend-lambda';
 import * as cognito from 'aws-cdk-lib/aws-cognito';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as logs from 'aws-cdk-lib/aws-logs';
 import { DeploymentConfig } from '../../config';
+import { Server } from './server';
 
 interface ApiProps {
   deploymentConfig: DeploymentConfig;
   userPool: cognito.IUserPool;
   usersTable: dynamodb.ITable;
+  server: Server;
 }
 
 /**
@@ -57,6 +60,35 @@ export class Api extends Construct {
 
     // Grant the lambda permission to describe the user pool
     props.userPool.grant(passwordPolicyFunction, 'cognito-idp:DescribeUserPool');
+
+    this.setupServerProxy(props);
+  }
+
+  private setupServerProxy(props: ApiProps) {
+    const vpcLink = new apigateway.VpcLink(this, 'ServerVpcLink', {
+      targets: [props.server.nlb],
+    });
+
+    const serverResource = this.gateway.root.addResource('server');
+    const proxyResource = serverResource.addProxy({
+      defaultIntegration: new apigateway.Integration({
+        type: apigateway.IntegrationType.HTTP_PROXY,
+        integrationHttpMethod: 'POST', // gRPC usually uses POST
+        uri: `http://${props.server.nlb.loadBalancerDnsName}:50051/{proxy}`,
+        options: {
+          connectionType: apigateway.ConnectionType.VPC_LINK,
+          vpcLink: vpcLink,
+          requestParameters: {
+            'integration.request.path.proxy': 'method.request.path.proxy',
+          },
+        },
+      }),
+      defaultMethodOptions: {
+        requestParameters: {
+          'method.request.path.proxy': true,
+        },
+      },
+    });
   }
 
   private setupApi(props: ApiProps) {

@@ -87,19 +87,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         collect_messages(&pkg, "", &file.message_type, &mut all_message_names);
     }
 
-    // Configure prost-build
-    let mut config = prost_build::Config::new();
-    let derive_attr =
-        r#"#[derive(serde::Serialize, serde::Deserialize)] #[serde(rename_all = "camelCase")]"#;
+    let derive_attr = r#"#[derive(serde::Serialize, serde::Deserialize)] #[serde(rename_all = "camelCase")]"#;
 
-    for full_name in &all_message_names {
-        config.type_attribute(full_name, derive_attr);
-    }
-
-    // Compile protos
+    // Compile protos with tonic
     let proto_strs: Vec<&str> = protos.iter().map(|p| p.to_str().unwrap()).collect();
-    // We pass the proto_root as the include path here as well
-    config.compile_protos(&proto_strs, &[proto_root.to_str().unwrap()])?;
+    tonic_build::configure()
+        .type_attribute(".", derive_attr)
+        .compile_protos(&proto_strs, &[proto_root.to_str().unwrap()])?;
 
     Ok(())
 }

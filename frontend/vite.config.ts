@@ -32,6 +32,13 @@ export default defineConfig({
 					const withoutApi = path.replace(/^\/api/, '');
 					return `/lambda-url${withoutApi}/`;
 				}
+			},
+			// On dev redirect "/server/..." to the gRPC server stripping the prefix
+			'/server': {
+				target: 'http://localhost:50051',
+				changeOrigin: true,
+				secure: false,
+				rewrite: (path) => path.replace(/^\/server/, '')
 			}
 		}
 	}

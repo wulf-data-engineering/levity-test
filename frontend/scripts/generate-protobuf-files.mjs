@@ -41,7 +41,10 @@ fs.mkdirSync(outDir, { recursive: true });
 
 // --- RUN PROTOC ---
 execSync(
-	`protoc -I ${protoDir} ${protoFilesArg} --plugin=./node_modules/.bin/protoc-gen-ts_proto --ts_proto_out=${outDir} --ts_proto_opt=esModuleInterop=true,outputJsonMethods=true,forceLong=string`,
+	`protoc -I ${protoDir} ${protoFilesArg} \
+		--plugin=./node_modules/.bin/protoc-gen-ts_proto --ts_proto_out=${outDir} --ts_proto_opt=esModuleInterop=true,outputJsonMethods=true,forceLong=string \
+		--plugin=./node_modules/.bin/protoc-gen-es --es_out=${outDir} --es_opt=target=ts \
+		--plugin=./node_modules/.bin/protoc-gen-connect-es --connect-es_out=${outDir} --connect-es_opt=target=ts`,
 	{ stdio: 'inherit' }
 );
 

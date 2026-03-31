@@ -10,6 +10,10 @@ on:
       hostedZoneId:
         required: true
         type: string
+      spot:
+        required: false
+        type: boolean
+        default: false
     secrets:
       awsRoleArn:
         required: true
@@ -60,5 +64,6 @@ jobs:
             -c domain=${{ inputs.domain }} \
             -c hostedZoneId=${{ inputs.hostedZoneId }} \
             -c githubRepo=${{ github.repository }} \
+            -c spot=${{ inputs.spot }} \
             -c backendPath=../downloaded-backend \
             -c frontendPath=../downloaded-frontend
