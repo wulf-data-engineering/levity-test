@@ -1,4 +1,4 @@
-# Tool-Set Project Frontend
+# levity-test Frontend
 
 This directory contains the frontend application using **SvelteKit** with **TypeScript**.
 It is designed to be a self-contained static single-page application.

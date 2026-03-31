@@ -1,20 +1,22 @@
-import { Construct } from "constructs";
-import * as cdk from "aws-cdk-lib";
-import * as route53 from "aws-cdk-lib/aws-route53";
+import { Construct } from 'constructs';
+import * as cdk from 'aws-cdk-lib';
+import * as route53 from 'aws-cdk-lib/aws-route53';
 
 export interface DomainConfig {
   domainName: string; // FQDN (e.g. "staging.example.com")
-  hostedZone: route53.IHostedZone;
+  hostedZone?: route53.IHostedZone; // optional for the FoundationStack
 }
 
 export interface DeploymentConfig {
-  mode: "local" | "sandbox" | "environment";
+  mode: 'local' | 'sandbox' | 'environment';
   aws: boolean;
   removalPolicy: cdk.RemovalPolicy;
   autoDeleteObjects: boolean;
   terminationProtection: boolean;
   domain?: DomainConfig;
   skipBuild?: boolean;
+  backendPath?: string;
+  frontendPath?: string;
 }
 
 /**
@@ -26,8 +28,8 @@ export interface DeploymentConfig {
  *
  * local & sandbox modes use resource removal policies that allow easy cleanup.
  *
- * AWS modes support optional domain configuration via CDK context variables:
- * `-c domain=sandbox example.com [-c hostedZoneId=Z123456ABCDEFG]`.
+ * stage mode requires a domain configuration via CDK context variables:
+ * `-c domain=sandbox example.com -c hostedZoneId=Z123456ABCDEFG`.
  * The domain will be used for CloudFront distribution, API Gateway & Cognito user pool.
  *
  * In constructs check for `aws` flag to decided whether resources could & should be deployed to localstack.
@@ -37,14 +39,16 @@ export interface DeploymentConfig {
  * - API Gateway is omitted (replaced by direct calls to cargo lambda watch)
  */
 export function loadDeploymentConfig(scope: Construct): DeploymentConfig {
-  const skipBuild = scope.node.tryGetContext("skipBuild") === true || scope.node.tryGetContext("skipBuild") === "true";
+  const skipBuild =
+    scope.node.tryGetContext('skipBuild') === true ||
+    scope.node.tryGetContext('skipBuild') === 'true';
 
   // Check for Localstack & Lambda Proxy mode
   const awsEndpointUrl = process.env.AWS_ENDPOINT_URL;
-  const dev = awsEndpointUrl && awsEndpointUrl.startsWith("http://");
+  const dev = awsEndpointUrl && awsEndpointUrl.startsWith('http://');
   if (dev) {
     return {
-      mode: "local",
+      mode: 'local',
       aws: false,
       removalPolicy: cdk.RemovalPolicy.DESTROY,
       autoDeleteObjects: true,
@@ -53,45 +57,38 @@ export function loadDeploymentConfig(scope: Construct): DeploymentConfig {
     };
   }
 
-  // Use a domain if provided in a non-local mode (-c domain=...)
-  const domainName = scope.node.tryGetContext("domain");
-  const hostedZoneId = scope.node.tryGetContext("hostedZoneId");
-
-  let domain: DomainConfig | undefined;
-  if (domainName) {
-    let hostedZone;
-    if (hostedZoneId) {
-      hostedZone = route53.HostedZone.fromHostedZoneAttributes(scope, "Zone", {
-        hostedZoneId,
-        zoneName: domainName,
-      });
-    } else {
-      hostedZone = route53.HostedZone.fromLookup(scope, "Zone", {
-        domainName: domainName,
-      });
-    }
-    domain = {
-      domainName,
-      hostedZone,
-    };
-  }
-
   // Check CDK Context (-c mode=sandbox)
-  const mode = scope.node.tryGetContext("mode") || "stage";
-  if (mode === "sandbox") {
+  const mode = scope.node.tryGetContext('mode') || 'stage';
+  if (mode === 'sandbox') {
     return {
-      mode: "sandbox",
+      mode: 'sandbox',
       aws: true,
       removalPolicy: cdk.RemovalPolicy.DESTROY,
       autoDeleteObjects: true,
       terminationProtection: false,
-      domain,
       skipBuild,
     };
   }
 
+  const domainName = scope.node.tryGetContext('domain');
+
+  // hosted zone is required for the AppStack but has to be optional for the FoundationStack
+  let hostedZone: route53.IHostedZone | undefined;
+  const hostedZoneId = scope.node.tryGetContext('hostedZoneId');
+  if (hostedZoneId && domainName) {
+    hostedZone = route53.HostedZone.fromHostedZoneAttributes(scope, 'Zone', {
+      hostedZoneId: scope.node.getContext('hostedZoneId'),
+      zoneName: domainName,
+    });
+  }
+
+  let domain: DomainConfig | undefined;
+  if (domainName) {
+    domain = { domainName, hostedZone };
+  }
+
   return {
-    mode: "environment",
+    mode: 'environment',
     aws: true,
     // Protects data on delete/update, but cleans up if initial creation fails (rollback).
     removalPolicy: cdk.RemovalPolicy.RETAIN_ON_UPDATE_OR_DELETE,
@@ -99,5 +96,7 @@ export function loadDeploymentConfig(scope: Construct): DeploymentConfig {
     terminationProtection: true,
     domain,
     skipBuild,
+    backendPath: scope.node.tryGetContext('backendPath'),
+    frontendPath: scope.node.tryGetContext('frontendPath'),
   };
 }

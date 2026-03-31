@@ -1,6 +1,6 @@
 services:
   localstack:
-    image: localstack/localstack
+    image: localstack/localstack:4.14.0
     container_name: localstack-main
     ports:
       - "4566:4566"
@@ -29,6 +29,5 @@ services:
       - AWS_SECRET_ACCESS_KEY=test
     volumes:
       - "./local/cognito-local-volume:/app/.cognito"
-
 volumes:
   cognito-data:

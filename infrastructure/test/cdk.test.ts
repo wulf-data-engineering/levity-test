@@ -1,6 +1,6 @@
 import * as cdk from 'aws-cdk-lib';
 import { Template } from 'aws-cdk-lib/assertions';
-import * as Cdk from '../lib/cdk-stack';
+import * as Cdk from '../lib/app-stack';
 
 test('Infrastructure Created', () => {
   delete process.env.AWS_ENDPOINT_URL;
@@ -18,7 +18,7 @@ test('Infrastructure Created', () => {
       skipBuild: true,
     },
   });
-  const stack = new Cdk.CdkStack(app, 'CdkTestStack');
+  const stack = new Cdk.AppStack(app, 'CdkTestStack');
   const template = Template.fromStack(stack);
 
   // Verify API Gateway

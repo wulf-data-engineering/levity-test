@@ -30,7 +30,7 @@ async fn main() -> Result<(), Error> {
         let state = state.clone();
         async move { function_handler(req, state).await }
     }))
-        .await
+    .await
 }
 
 async fn function_handler(req: Request, state: AppState) -> Result<Response<Body>, Error> {
@@ -178,7 +178,7 @@ mod tests {
         let payload = serde_json::json!({
             "sub": "test-sub"
         })
-            .to_string();
+        .to_string();
         let encoded_payload = base64::engine::general_purpose::URL_SAFE.encode(payload);
         let token = format!("header.{}.signature", encoded_payload);
 

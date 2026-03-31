@@ -21,6 +21,7 @@ updates:
       interval: "daily"
       time: "09:00"
       timezone: "Europe/Berlin"
+    open-pull-requests-limit: 5
     groups:
       minor-patch-typescript-dependencies:
         patterns: ["*"]
@@ -33,10 +34,19 @@ updates:
       interval: "daily"
       time: "09:00"
       timezone: "Europe/Berlin"
+    open-pull-requests-limit: 5
     groups:
       minor-patch-rust-dependencies:
         patterns: ["*"]
         update-types: ["minor", "patch"]
+  # Backend's toolchain
+  - package-ecosystem: "rust-toolchain"
+    directories:
+      - "backend/"
+    schedule:
+      interval: "weekly"
+      time: "09:00"
+      timezone: "Europe/Berlin"
   # Docker Compose
   - package-ecosystem: "docker"
     directories:

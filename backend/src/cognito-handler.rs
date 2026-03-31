@@ -1,5 +1,5 @@
 use aws_sdk_dynamodb::Client;
-use backend::{load_aws_config, CognitoUserPoolEvent };
+use backend::{load_aws_config, CognitoUserPoolEvent};
 use lambda_runtime::{run, service_fn, Error, LambdaEvent};
 use protocol_macro::protocols;
 
