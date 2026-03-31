@@ -5,11 +5,11 @@ import { backendLambdaApi } from './backend-lambda';
 import * as cognito from 'aws-cdk-lib/aws-cognito';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as logs from 'aws-cdk-lib/aws-logs';
-import { DeploymentConfig } from '../../config';
+import { AppConfig } from '../../config';
 import { Server } from './server';
 
 interface ApiProps {
-  deploymentConfig: DeploymentConfig;
+  config: AppConfig;
   userPool: cognito.IUserPool;
   usersTable: dynamodb.ITable;
   server: Server;
@@ -28,7 +28,7 @@ export class Api extends Construct {
   constructor(scope: Construct, id: string, props: ApiProps) {
     super(scope, id);
 
-    this.gateway = this.setupApi(props);
+    this.gateway = this.setupApi(props.config);
 
     this.apiRoot = this.gateway.root.addResource('api');
 
@@ -38,7 +38,7 @@ export class Api extends Construct {
     authorizer._attachToApi(this.gateway); // required until some lambda uses it
 
     const passwordPolicyFunction = backendLambdaApi(this, 'PasswordPolicyFunction', {
-      deploymentConfig: props.deploymentConfig,
+      config: props.config,
       apiRoot: this.apiRoot,
       binaryName: 'password-policy',
       environment: {
@@ -47,7 +47,7 @@ export class Api extends Construct {
     });
 
     const userProfileFunction = backendLambdaApi(this, 'UserProfileFunction', {
-      deploymentConfig: props.deploymentConfig,
+      config: props.config,
       apiRoot: this.apiRoot,
       binaryName: 'user-profile',
       environment: {
@@ -91,13 +91,13 @@ export class Api extends Construct {
     });
   }
 
-  private setupApi(props: ApiProps) {
+  private setupApi(config: AppConfig) {
     const stageName = 'prod';
 
     const accessLogGroup = new logs.LogGroup(this, 'AccessLogs', {
       logGroupName: 'API-Gateway-Access-Logs',
       retention: logs.RetentionDays.THREE_DAYS,
-      removalPolicy: props.deploymentConfig.removalPolicy,
+      removalPolicy: config.removalPolicy,
     });
 
     const gateway = new apigateway.RestApi(this, 'RestApi', {
@@ -121,7 +121,7 @@ export class Api extends Construct {
     const executionLogGroup = new logs.LogGroup(this, 'ExecutionLogs', {
       logGroupName: `API-Gateway-Execution-Logs_${gateway.restApiId}/${stageName}`,
       retention: logs.RetentionDays.THREE_DAYS,
-      removalPolicy: props.deploymentConfig.removalPolicy,
+      removalPolicy: config.removalPolicy,
     });
 
     // This prevents the Stage from auto-creating a "Never Expire" log group

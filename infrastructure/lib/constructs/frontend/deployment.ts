@@ -7,14 +7,14 @@ import * as path from 'path';
 import { execSync } from 'child_process';
 import * as fs from 'fs';
 import * as cognito from 'aws-cdk-lib/aws-cognito';
-import { DeploymentConfig } from '../../config';
+import { AppConfig } from '../../config';
 
 interface DeploymentProps {
   siteBucket: s3.IBucket;
   distribution: cloudfront.IDistribution;
   userPool?: cognito.IUserPool;
   userPoolClient?: cognito.IUserPoolClient;
-  deploymentConfig: DeploymentConfig;
+  config: AppConfig;
 }
 
 export class FrontendDeployment extends Construct {
@@ -30,13 +30,11 @@ export class FrontendDeployment extends Construct {
     };
 
     let assetSource: s3deploy.ISource;
-    if (props.deploymentConfig.skipBuild) {
-      assetSource = s3deploy.Source.asset(path.join(process.cwd(), 'stub/frontend'));
-    } else if (props.deploymentConfig.frontendPath) {
+    if (props.config.frontendPath) {
       assetSource = s3deploy.Source.asset(
-        path.resolve(process.cwd(), props.deploymentConfig.frontendPath),
+        path.resolve(process.cwd(), props.config.frontendPath),
       );
-    } else {
+    } else if (props.config.build) {
       assetSource = s3deploy.Source.asset(frontendPath, {
         exclude: ['node_modules', 'build', '.svelte-kit', 'dist', '.git'],
         bundling: {
@@ -62,6 +60,9 @@ export class FrontendDeployment extends Construct {
           },
         },
       });
+    } else {
+      // Stub for foundation-only deployments (DEFAULT)
+      assetSource = s3deploy.Source.asset(path.join(process.cwd(), 'stub/frontend'));
     }
 
     new s3deploy.BucketDeployment(this, 'DeploySvelte', {

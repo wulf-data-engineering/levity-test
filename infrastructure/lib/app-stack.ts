@@ -1,20 +1,20 @@
 import * as cdk from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import { Backend } from './constructs/backend';
-import { loadDeploymentConfig } from './config';
+import { AppConfig } from './config';
 import { Frontend } from './constructs/frontend';
 import * as route53 from 'aws-cdk-lib/aws-route53';
-import * as ses from 'aws-cdk-lib/aws-ses';
 
-interface AppStackProps extends cdk.StackProps {
+export interface AppStackProps extends cdk.StackProps {
   certificateArn?: string;
+  config: AppConfig;
 }
 
 export class AppStack extends cdk.Stack {
-  constructor(scope: Construct, id: string, props?: AppStackProps) {
+  constructor(scope: Construct, id: string, props: AppStackProps) {
     super(scope, id, props);
 
-    const config = loadDeploymentConfig(this);
+    const { config } = props;
 
     this.terminationProtection = config.terminationProtection;
 

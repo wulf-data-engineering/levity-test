@@ -1,6 +1,7 @@
 import * as cdk from 'aws-cdk-lib';
 import { Template } from 'aws-cdk-lib/assertions';
 import * as Cdk from '../lib/app-stack';
+import { loadDeploymentConfigs } from '../lib/config';
 
 test('Infrastructure Created', () => {
   delete process.env.AWS_ENDPOINT_URL;
@@ -13,12 +14,10 @@ test('Infrastructure Created', () => {
       hosted_zone_id: 'Z1234567890',
       email_sender_address: 'noreply@example.com',
       email_sender_name: 'Test Sender',
-      email_replyto: 'noreply@example.com',
-      aws: true,
-      skipBuild: true,
     },
   });
-  const stack = new Cdk.AppStack(app, 'CdkTestStack');
+  const configs = loadDeploymentConfigs(app);
+  const stack = new Cdk.AppStack(app, 'CdkTestStack', { config: configs.app });
   const template = Template.fromStack(stack);
 
   // Verify API Gateway

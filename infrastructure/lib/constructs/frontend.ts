@@ -3,12 +3,12 @@ import * as apigateway from 'aws-cdk-lib/aws-apigateway';
 import * as cognito from 'aws-cdk-lib/aws-cognito';
 import { FrontendStorage } from './frontend/storage';
 import { FrontendDeployment } from './frontend/deployment';
-import { DeploymentConfig } from '../config';
+import { AppConfig } from '../config';
 import { FrontendDistribution } from './frontend/distribution';
 import * as route53 from 'aws-cdk-lib/aws-route53';
 
 interface FrontendProps {
-  config: DeploymentConfig;
+  config: AppConfig;
   backendApi?: apigateway.RestApi; // optionally forwards /api to backend API
   userPool?: cognito.IUserPool;
   userPoolClient?: cognito.IUserPoolClient;
@@ -21,12 +21,11 @@ export class Frontend extends Construct {
     super(scope, id);
     console.assert(props.config.aws); // frontend only makes sense in AWS deployments
 
-    const deploymentConfig = props.config;
-
-    const storage = new FrontendStorage(this, 'Storage', { deploymentConfig });
+    const { config } = props;
+    const storage = new FrontendStorage(this, 'Storage', { config });
 
     const distribution = new FrontendDistribution(this, 'Distribution', {
-      deploymentConfig,
+      config,
       siteBucket: storage.siteBucket,
       backendApi: props.backendApi,
       hostedZone: props.hostedZone,
@@ -38,7 +37,7 @@ export class Frontend extends Construct {
       distribution: distribution.distribution,
       userPool: props.userPool,
       userPoolClient: props.userPoolClient,
-      deploymentConfig,
+      config,
     });
   }
 }

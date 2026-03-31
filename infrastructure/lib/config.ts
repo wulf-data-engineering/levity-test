@@ -7,16 +7,38 @@ export interface DomainConfig {
   hostedZone?: route53.IHostedZone; // optional for the FoundationStack
 }
 
-export interface DeploymentConfig {
+export interface FoundationConfig {
+  githubRepo: string;
+  domain: string;
+  productionAccountId?: string;
+  stagingNameServers?: string;
+  removalPolicy: cdk.RemovalPolicy;
+}
+
+export interface CertificateConfig {
+  domain: string;
+  hostedZoneId: string;
+}
+
+export interface AppConfig {
   mode: 'local' | 'sandbox' | 'environment';
+  environment?: 'staging' | 'production';
   aws: boolean;
   removalPolicy: cdk.RemovalPolicy;
   autoDeleteObjects: boolean;
   terminationProtection: boolean;
-  domain?: DomainConfig;
-  skipBuild?: boolean;
+  domain: DomainConfig;
+  build: boolean;
   backendPath?: string;
   frontendPath?: string;
+  imageDigest?: string;
+  stagingRepositoryArn?: string;
+}
+
+export interface DeploymentConfigs {
+  foundation?: FoundationConfig;
+  certificate?: CertificateConfig;
+  app: AppConfig;
 }
 
 /**
@@ -38,68 +60,97 @@ export interface DeploymentConfig {
  * - Lambdas are proxied to local cargo lambda watch server
  * - API Gateway is omitted (replaced by direct calls to cargo lambda watch)
  */
-export function loadDeploymentConfig(scope: Construct): DeploymentConfig {
-  const rawSkipBuild = scope.node.tryGetContext('skipBuild');
-  const skipBuild = rawSkipBuild === true || rawSkipBuild === 'true' || process.env.SKIP_BUILD === 'true';
-  
-  if (skipBuild) {
-    console.log(`[CDK] skipBuild is ENABLED for construct: ${scope.node.id}`);
-  }
+export function loadDeploymentConfigs(scope: Construct): DeploymentConfigs {
+  const mode = scope.node.tryGetContext('mode') || 'environment';
+  const environment = scope.node.tryGetContext('environment');
 
-  // Check for Localstack & Lambda Proxy mode
-  const awsEndpointUrl = process.env.AWS_ENDPOINT_URL;
-  const dev = awsEndpointUrl && awsEndpointUrl.startsWith('http://');
-  if (dev) {
-    return {
-      mode: 'local',
-      aws: false,
-      removalPolicy: cdk.RemovalPolicy.DESTROY,
-      autoDeleteObjects: true,
-      terminationProtection: false,
-      skipBuild,
-    };
-  }
-
-  // Check CDK Context (-c mode=sandbox)
-  const mode = scope.node.tryGetContext('mode') || 'stage';
-  if (mode === 'sandbox') {
-    return {
-      mode: 'sandbox',
-      aws: true,
-      removalPolicy: cdk.RemovalPolicy.DESTROY,
-      autoDeleteObjects: true,
-      terminationProtection: false,
-      skipBuild,
-    };
-  }
-
+  // 1. Foundation Configuration
+  const githubRepo = scope.node.tryGetContext('githubRepo');
   const domainName = scope.node.tryGetContext('domain');
 
-  // hosted zone is required for the AppStack but has to be optional for the FoundationStack
-  let hostedZone: route53.IHostedZone | undefined;
+  if (mode === 'environment' && !domainName) {
+    throw new Error(
+      '❌ Context variable "domain" is required for environment mode (staging/production).',
+    );
+  }
+
+  let foundation: FoundationConfig | undefined;
+  if (githubRepo) {
+    foundation = {
+      githubRepo,
+      domain: domainName,
+      productionAccountId: scope.node.tryGetContext('productionAccountId'),
+      stagingNameServers: scope.node.tryGetContext('stagingNameServers'),
+      removalPolicy:
+        mode === 'local' || mode === 'sandbox'
+          ? cdk.RemovalPolicy.DESTROY
+          : cdk.RemovalPolicy.RETAIN_ON_UPDATE_OR_DELETE,
+    };
+  }
+
+  // 2. Certificate Configuration
   const hostedZoneId = scope.node.tryGetContext('hostedZoneId');
-  if (hostedZoneId && domainName) {
+  let certificate: CertificateConfig | undefined;
+  if (domainName && hostedZoneId) {
+    certificate = {
+      domain: domainName,
+      hostedZoneId,
+    };
+  }
+
+  // 3. App Configuration
+  const backendPath = scope.node.tryGetContext('backendPath');
+  const frontendPath = scope.node.tryGetContext('frontendPath');
+  const explicitBuild = scope.node.tryGetContext('build');
+  const imageDigest = scope.node.tryGetContext('imageDigest');
+  const stagingRepositoryArn = scope.node.tryGetContext('stagingRepositoryArn');
+
+  let build = false;
+  if (explicitBuild === 'true' || explicitBuild === true) {
+    build = true;
+  }
+
+  // Check for Localstack
+  const awsEndpointUrl = process.env.AWS_ENDPOINT_URL;
+  const isLocal = awsEndpointUrl && awsEndpointUrl.startsWith('http://');
+
+  let appMode: 'local' | 'sandbox' | 'environment' = isLocal
+    ? 'local'
+    : mode === 'sandbox'
+      ? 'sandbox'
+      : 'environment';
+
+  if (appMode === 'environment' && environment !== 'staging' && environment !== 'production') {
+    throw new Error(
+      '❌ Context variable "environment" is required and must be either "staging" or "production" when mode is "environment".',
+    );
+  }
+
+  let hostedZone: route53.IHostedZone | undefined;
+  if (domainName && hostedZoneId) {
     hostedZone = route53.HostedZone.fromHostedZoneAttributes(scope, 'Zone', {
-      hostedZoneId: scope.node.getContext('hostedZoneId'),
+      hostedZoneId,
       zoneName: domainName,
     });
   }
 
-  let domain: DomainConfig | undefined;
-  if (domainName) {
-    domain = { domainName, hostedZone };
-  }
-
-  return {
-    mode: 'environment',
-    aws: true,
-    // Protects data on delete/update, but cleans up if initial creation fails (rollback).
-    removalPolicy: cdk.RemovalPolicy.RETAIN_ON_UPDATE_OR_DELETE,
-    autoDeleteObjects: false,
-    terminationProtection: true,
-    domain,
-    skipBuild,
-    backendPath: scope.node.tryGetContext('backendPath'),
-    frontendPath: scope.node.tryGetContext('frontendPath'),
+  const app: AppConfig = {
+    mode: appMode,
+    environment: environment as 'staging' | 'production' | undefined,
+    aws: appMode !== 'local',
+    removalPolicy:
+      appMode === 'environment'
+        ? cdk.RemovalPolicy.RETAIN_ON_UPDATE_OR_DELETE
+        : cdk.RemovalPolicy.DESTROY,
+    autoDeleteObjects: appMode !== 'environment',
+    terminationProtection: appMode === 'environment',
+    domain: { domainName: domainName || 'localhost', hostedZone },
+    build,
+    backendPath,
+    frontendPath,
+    imageDigest,
+    stagingRepositoryArn,
   };
+
+  return { foundation, certificate, app };
 }

@@ -7,10 +7,10 @@ import * as fs from 'fs';
 import * as logs from 'aws-cdk-lib/aws-logs';
 import { execSync } from 'child_process';
 import * as os from 'os';
-import { DeploymentConfig } from '../../config';
+import { AppConfig } from '../../config';
 
 export interface BackendLambdaProps extends lambda.FunctionOptions {
-  deploymentConfig: DeploymentConfig;
+  config: AppConfig;
   binaryName: string; // The name of the [[bin]] in Cargo.toml
   environment?: { [key: string]: string }; // Environment variables
 }
@@ -27,7 +27,7 @@ export function backendLambda(
   id: string,
   props: BackendLambdaProps,
 ): lambda.Function {
-  if (props.deploymentConfig.aws) return rustLambda(scope, id, props);
+  if (props.config.aws) return rustLambda(scope, id, props);
   else return proxyLambda(scope, id, props);
 }
 
@@ -80,17 +80,15 @@ function rustLambda(scope: Construct, id: string, props: BackendLambdaProps) {
   const logGroup = new logs.LogGroup(scope, `${id}LogGroup`, {
     logGroupName: `/aws/lambda/${props.functionName || props.binaryName}`,
     retention: logs.RetentionDays.ONE_WEEK,
-    removalPolicy: props.deploymentConfig.removalPolicy,
+    removalPolicy: props.config.removalPolicy,
   });
 
   let code: lambda.Code;
-  if (props.deploymentConfig.skipBuild) {
-    code = lambda.Code.fromAsset(path.join(process.cwd(), 'stub'));
-  } else if (props.deploymentConfig.backendPath) {
+  if (props.config.backendPath) {
     // Find the specific binary from the pre-built backend path
     const binPath = path.resolve(
       process.cwd(),
-      props.deploymentConfig.backendPath,
+      props.config.backendPath,
       props.binaryName,
     );
     if (!fs.existsSync(binPath)) throw new Error(`Pre-built binary not found: ${binPath}`);
@@ -100,8 +98,11 @@ function rustLambda(scope: Construct, id: string, props: BackendLambdaProps) {
     fs.copyFileSync(binPath, path.join(tempDir, 'bootstrap'));
     fs.chmodSync(path.join(tempDir, 'bootstrap'), 0o755);
     code = lambda.Code.fromAsset(tempDir);
-  } else {
+  } else if (props.config.build) {
     code = bundleRustCode(props.binaryName);
+  } else {
+    // Stub for foundation-only deployments or fast-synth (DEFAULT)
+    code = lambda.Code.fromAsset(path.join(process.cwd(), 'stub'));
   }
 
   return new lambda.Function(scope, id, {

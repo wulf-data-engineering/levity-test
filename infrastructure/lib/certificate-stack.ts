@@ -1,22 +1,31 @@
 import * as cdk from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import * as acm from 'aws-cdk-lib/aws-certificatemanager';
-import { loadDeploymentConfig } from './config';
+import * as route53 from 'aws-cdk-lib/aws-route53';
+import { CertificateConfig } from './config';
+
+export interface CertificateStackProps extends cdk.StackProps {
+  config: CertificateConfig;
+}
 
 export class CertificateStack extends cdk.Stack {
   public readonly certificateArn?: string;
 
-  constructor(scope: Construct, id: string, props?: cdk.StackProps) {
+  constructor(scope: Construct, id: string, props: CertificateStackProps) {
     super(scope, id, props);
 
-    const config = loadDeploymentConfig(this);
-    const domainConfig = config.domain;
+    const { domain, hostedZoneId } = props.config;
 
-    if (domainConfig && domainConfig.hostedZone) {
+    const hostedZone = route53.HostedZone.fromHostedZoneAttributes(this, 'Zone', {
+      hostedZoneId,
+      zoneName: domain,
+    });
+
+    if (hostedZone) {
       const certificate = new acm.Certificate(this, 'SiteCert', {
-        domainName: domainConfig.domainName,
-        // Validates via the hostedZone provided through domainConfig
-        validation: acm.CertificateValidation.fromDns(domainConfig.hostedZone),
+        domainName: domain,
+        // Validates via the hostedZone
+        validation: acm.CertificateValidation.fromDns(hostedZone),
       });
 
       this.certificateArn = certificate.certificateArn;

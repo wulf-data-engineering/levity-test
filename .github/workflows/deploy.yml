@@ -14,6 +14,12 @@ on:
         required: false
         type: boolean
         default: false
+      imageDigest:
+        required: true
+        type: string
+      environment:
+        required: true
+        type: string
     secrets:
       awsRoleArn:
         required: true
@@ -66,4 +72,15 @@ jobs:
             -c githubRepo=${{ github.repository }} \
             -c spot=${{ inputs.spot }} \
             -c backendPath=../downloaded-backend \
-            -c frontendPath=../downloaded-frontend
+            -c frontendPath=../downloaded-frontend \
+            -c imageDigest=${{ inputs.imageDigest }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Tag Image as ${{ inputs.environment }}
+        run: |
+          REPO="levity-test/server"
+          MANIFEST=$(aws ecr batch-get-image --repository-name $REPO --image-ids imageDigest=${{ inputs.imageDigest }} --query 'images[0].imageManifest' --output text)
+          aws ecr put-image --repository-name $REPO --image-tag ${{ inputs.environment }} --image-manifest "$MANIFEST"
