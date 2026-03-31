@@ -5,13 +5,13 @@ import * as origins from 'aws-cdk-lib/aws-cloudfront-origins';
 import * as acm from 'aws-cdk-lib/aws-certificatemanager';
 import * as apigateway from 'aws-cdk-lib/aws-apigateway';
 import * as s3 from 'aws-cdk-lib/aws-s3';
-import { DeploymentConfig } from '../../config';
+import { AppConfig } from '../../config';
 import { BehaviorOptions } from 'aws-cdk-lib/aws-cloudfront';
 import * as route53 from 'aws-cdk-lib/aws-route53';
 import * as targets from 'aws-cdk-lib/aws-route53-targets';
 
 interface DistributionProps {
-  deploymentConfig: DeploymentConfig;
+  config: AppConfig;
   siteBucket: s3.IBucket;
   backendApi?: apigateway.RestApi;
   hostedZone?: route53.IHostedZone;
@@ -24,12 +24,12 @@ export class FrontendDistribution extends Construct {
   constructor(scope: Construct, id: string, props: DistributionProps) {
     super(scope, id);
 
-    const { deploymentConfig, siteBucket, backendApi } = props;
+    const { config, siteBucket, backendApi } = props;
 
     // certificate setup (required by CloudFront if custom domain is used)
     let certificate: acm.ICertificate | undefined = undefined;
 
-    const domainConfig = deploymentConfig.domain;
+    const domainConfig = config.domain;
     if (domainConfig) {
       const { domainName, hostedZone: hostedZoneConfig } = domainConfig;
 

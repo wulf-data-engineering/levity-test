@@ -5,24 +5,29 @@ import * as ses from 'aws-cdk-lib/aws-ses';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as ecr from 'aws-cdk-lib/aws-ecr';
 
+import { FoundationConfig } from './config';
+
+export interface FoundationStackProps extends cdk.StackProps {
+  config: FoundationConfig;
+}
+
 export class FoundationStack extends cdk.Stack {
   public readonly hostedZone?: route53.IHostedZone;
   public readonly sesIdentity?: ses.EmailIdentity;
 
-  constructor(scope: Construct, id: string, props?: cdk.StackProps) {
+  constructor(scope: Construct, id: string, props: FoundationStackProps) {
     super(scope, id, props);
 
-    const domainName = scope.node.getContext('domain');
-    const githubRepo = scope.node.getContext('githubRepo');
+    const { domain, githubRepo, productionAccountId, stagingNameServers } = props.config;
 
     // Hosted Zone (DNS for the domain)
     this.hostedZone = new route53.PublicHostedZone(this, 'HostedZone', {
-      zoneName: domainName,
+      zoneName: domain,
     });
 
     // SES Identity (allows app and Cognito to send emails from the domain)
     this.sesIdentity = new ses.EmailIdentity(this, 'SesIdentity', {
-      identity: ses.Identity.domain(domainName),
+      identity: ses.Identity.domain(domain),
       dkimSigning: true,
     });
 
@@ -31,7 +36,7 @@ export class FoundationStack extends cdk.Stack {
       // record.name is something like "token._domainkey.example.com"
       // We need just "token._domainkey"
       // Since it's a Token, we use CloudFormation intrinsic functions
-      const recordName = cdk.Fn.select(0, cdk.Fn.split(`.${domainName}`, record.name));
+      const recordName = cdk.Fn.select(0, cdk.Fn.split(`.${domain}`, record.name));
 
       new route53.CnameRecord(this, `DkimRecord${index}`, {
         zone: this.hostedZone!,
@@ -126,28 +131,55 @@ export class FoundationStack extends cdk.Stack {
     });
 
     // Cross-Account Staging Delegation
-    const stagingNameServersStr = scope.node.tryGetContext('stagingNameServers');
-    if (stagingNameServersStr) {
-      const stagingNameServers = stagingNameServersStr.split(',').map((ns: string) => ns.trim());
+    const environment = scope.node.tryGetContext('environment');
+
+    if (environment === 'production' && !stagingNameServers) {
+      throw new Error(
+        '❌ "stagingNameServers" context variable is required for production deployments to delegate the staging subdomain.',
+      );
+    }
+
+    if (stagingNameServers) {
+      const stagingNameServersList = stagingNameServers.split(',').map((ns: string) => ns.trim());
       new route53.ZoneDelegationRecord(this, 'StagingDelegation', {
-        zone: this.hostedZone,
+        zone: this.hostedZone!,
         recordName: 'staging',
-        nameServers: stagingNameServers,
+        nameServers: stagingNameServersList,
       });
     }
 
-    // ECR Repository for the standalone server
-    // TODO: Port to %[cookiecutter.project_slug]%/server
-    new ecr.Repository(this, 'ServerRepository', {
-      repositoryName: 'levity-test/server',
-      removalPolicy: cdk.RemovalPolicy.DESTROY, // Usually FoundationStack is kept, but allow cleanup for this test
-      autoDeleteImages: true,
-      lifecycleRules: [
-        {
-          maxImageCount: 5,
-          description: 'Keep only 5 last images',
-        },
-      ],
-    });
+    // ECR Repository for the standalone server - Only in staging
+    if (environment === 'staging') {
+      const repository = new ecr.Repository(this, 'ServerRepository', {
+        repositoryName: 'levity-test/server',
+        removalPolicy: cdk.RemovalPolicy.DESTROY, // Usually FoundationStack is kept, but allow cleanup for this test
+        autoDeleteImages: true,
+        lifecycleRules: [
+          {
+            maxImageCount: 5,
+            description: 'Keep only 5 last images',
+          },
+        ],
+      });
+
+      // Grant production account pull access if provided
+      if (productionAccountId) {
+        repository.addToResourcePolicy(new iam.PolicyStatement({
+          sid: 'AllowProductionPull',
+          effect: iam.Effect.ALLOW,
+          principals: [new iam.AccountPrincipal(productionAccountId)],
+          actions: [
+            'ecr:BatchCheckLayerAvailability',
+            'ecr:GetDownloadUrlForLayer',
+            'ecr:BatchGetImage',
+          ],
+        }));
+      }
+
+      new cdk.CfnOutput(this, 'ServerRepositoryArn', {
+        value: repository.repositoryArn,
+        description: 'ARN of the gRPC server ECR repository',
+      });
+    }
   }
 }

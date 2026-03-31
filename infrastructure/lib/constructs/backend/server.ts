@@ -7,10 +7,10 @@ import * as servicediscovery from 'aws-cdk-lib/aws-servicediscovery';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as ecr from 'aws-cdk-lib/aws-ecr';
 import * as elbv2 from 'aws-cdk-lib/aws-elasticloadbalancingv2';
-import { DeploymentConfig } from '../../config';
+import { AppConfig } from '../../config';
 
 export interface ServerProps {
-  deploymentConfig: DeploymentConfig;
+  config: AppConfig;
 }
 
 /**
@@ -26,9 +26,9 @@ export class Server extends Construct {
   constructor(scope: Construct, id: string, props: ServerProps) {
     super(scope, id);
 
-    const { deploymentConfig } = props;
+    const { config } = props;
     const spotContext = scope.node.tryGetContext('spot');
-    const isSpot = spotContext === 'true' || spotContext === true || deploymentConfig.mode === 'sandbox';
+    const isSpot = spotContext === 'true' || spotContext === true || config.mode === 'sandbox';
 
     // 1. VPC - Public subnets only to save NAT Gateway costs
     this.vpc = new ec2.Vpc(this, 'Vpc', {
@@ -74,10 +74,12 @@ export class Server extends Construct {
       networkMode: ecs.NetworkMode.AWS_VPC,
     });
 
-    const repository = ecr.Repository.fromRepositoryName(this, 'Repo', 'levity-test/server');
+    const repository = config.stagingRepositoryArn 
+      ? ecr.Repository.fromRepositoryArn(this, 'Repo', config.stagingRepositoryArn)
+      : ecr.Repository.fromRepositoryName(this, 'Repo', 'levity-test/server');
 
     const container = taskDefinition.addContainer('ServerContainer', {
-      image: ecs.ContainerImage.fromEcrRepository(repository, 'latest'),
+      image: ecs.ContainerImage.fromEcrRepository(repository, config.imageDigest || 'latest'),
       cpu: 256,
       memoryLimitMiB: 450,
       logging: ecs.LogDrivers.awsLogs({ streamPrefix: 'Server' }),
