@@ -7,15 +7,13 @@ on:
       domain:
         required: true
         type: string
-      hostedZoneId:
-        required: true
-        type: string
-      spot:
-        required: false
-        type: boolean
-        default: false
       imageDigest:
-        required: true
+        description: "The ECR image digest to deploy"
+        required: false
+        type: string
+      serverRepositoryArn:
+        description: "The ECR repository ARN"
+        required: false
         type: string
       environment:
         required: true
@@ -62,19 +60,17 @@ jobs:
           name: frontend-build
           path: downloaded-frontend
 
-      - name: CDK Deploy for ${{ inputs.domain }} (${{ inputs.hostedZoneId }})
+      - name: CDK Deploy for ${{ inputs.domain }}
         working-directory: ./infrastructure
         run: |
           npx cdk deploy AppStack --require-approval never \
-            -c mode=environment \
             -c environment=${{ inputs.environment }} \
             -c domain=${{ inputs.domain }} \
-            -c hostedZoneId=${{ inputs.hostedZoneId }} \
+            -c serverRepositoryArn=${{ inputs.serverRepositoryArn }} \
+            -c imageDigest=${{ inputs.imageDigest }} \
             -c githubRepo=${{ github.repository }} \
-            -c spot=${{ inputs.spot }} \
             -c backendPath=../downloaded-backend \
             -c frontendPath=../downloaded-frontend \
-            -c imageDigest=${{ inputs.imageDigest }}
 
       - name: Login to Amazon ECR
         id: login-ecr

@@ -4,7 +4,6 @@ import * as route53 from 'aws-cdk-lib/aws-route53';
 
 export interface DomainConfig {
   domainName: string; // FQDN (e.g. "staging.example.com")
-  hostedZone?: route53.IHostedZone; // optional for the FoundationStack
 }
 
 export interface FoundationConfig {
@@ -17,7 +16,6 @@ export interface FoundationConfig {
 
 export interface CertificateConfig {
   domain: string;
-  hostedZoneId: string;
 }
 
 export interface AppConfig {
@@ -32,7 +30,7 @@ export interface AppConfig {
   backendPath?: string;
   frontendPath?: string;
   imageDigest?: string;
-  stagingRepositoryArn?: string;
+  serverRepositoryArn?: string;
 }
 
 export interface DeploymentConfigs {
@@ -89,12 +87,10 @@ export function loadDeploymentConfigs(scope: Construct): DeploymentConfigs {
   }
 
   // 2. Certificate Configuration
-  const hostedZoneId = scope.node.tryGetContext('hostedZoneId');
   let certificate: CertificateConfig | undefined;
-  if (domainName && hostedZoneId) {
+  if (domainName) {
     certificate = {
-      domain: domainName,
-      hostedZoneId,
+      domain: domainName
     };
   }
 
@@ -103,7 +99,7 @@ export function loadDeploymentConfigs(scope: Construct): DeploymentConfigs {
   const frontendPath = scope.node.tryGetContext('frontendPath');
   const explicitBuild = scope.node.tryGetContext('build');
   const imageDigest = scope.node.tryGetContext('imageDigest');
-  const stagingRepositoryArn = scope.node.tryGetContext('stagingRepositoryArn');
+  const serverRepositoryArn = scope.node.tryGetContext('serverRepositoryArn');
 
   let build = false;
   if (explicitBuild === 'true' || explicitBuild === true) {
@@ -126,13 +122,7 @@ export function loadDeploymentConfigs(scope: Construct): DeploymentConfigs {
     );
   }
 
-  let hostedZone: route53.IHostedZone | undefined;
-  if (domainName && hostedZoneId) {
-    hostedZone = route53.HostedZone.fromHostedZoneAttributes(scope, 'Zone', {
-      hostedZoneId,
-      zoneName: domainName,
-    });
-  }
+
 
   const app: AppConfig = {
     mode: appMode,
@@ -144,12 +134,12 @@ export function loadDeploymentConfigs(scope: Construct): DeploymentConfigs {
         : cdk.RemovalPolicy.DESTROY,
     autoDeleteObjects: appMode !== 'environment',
     terminationProtection: appMode === 'environment',
-    domain: { domainName: domainName || 'localhost', hostedZone },
+    domain: { domainName: domainName || 'localhost' },
     build,
     backendPath,
     frontendPath,
     imageDigest,
-    stagingRepositoryArn,
+    serverRepositoryArn,
   };
 
   return { foundation, certificate, app };

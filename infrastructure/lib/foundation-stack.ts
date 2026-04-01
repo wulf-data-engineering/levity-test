@@ -124,11 +124,6 @@ export class FoundationStack extends cdk.Stack {
       });
     }
 
-    new cdk.CfnOutput(this, 'HostedZoneId', {
-      value: this.hostedZone.hostedZoneId,
-      description:
-        'Hosted Zone ID for this environment. Provide this to the AppStack GitHub Actions variables.',
-    });
 
     // Cross-Account Staging Delegation
     const environment = scope.node.tryGetContext('environment');

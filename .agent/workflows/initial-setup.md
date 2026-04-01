@@ -1,5 +1,5 @@
 ---
-description: Initial setup guide (GitHub repository, AWS account, foundation stack, Github variables and secrets)
+description: Initial setup guide (GitHub repository, AWS account, foundation/certificate stack, Github variables and secrets)
 ---
 
 # Initial Setup
@@ -42,59 +42,47 @@ Ask the user to create or sign in to:
 Ask the user to configure SSO logins and profiles for both via CLI:
 
     ```bash
-    aws configure sso --profile levity-test-staging
-    aws configure sso --profile levity-test-production
+    aws configure sso --profile %[ cookiecutter.project_slug ]%-staging
+    aws configure sso --profile %[ cookiecutter.project_slug ]%-production
     ```
 
-## Deploy FoundationStacks (Cross-Account Setup)
+Make sure the developer has logged into AWS with both profiles:
 
-Deploy the `FoundationStack` to set up the base infrastructure for both accounts. **Order is critical here!**
+   ```bash
+   aws sts get-caller-identity --profile levity-test-staging
+   aws sts get-caller-identity --profile levity-test-production
+   ```
 
-### 1. Bootstrap Staging Account First
-1. The domain name for staging is: `staging.levity.wulf.technology`
-2. Run the deployment against the staging profile:
+**Action:** Capture the account ids for both environents.
+
+## Deploy foundation stack (Cross-Account Setup)
+
+Bootstrap cdk for both environments:
 
    ```bash
    cd infrastructure
-   npx cdk bootstrap aws://unknown-account/eu-central-1 aws://unknown-account/us-east-1 \
-     --profile levity-test-staging
-
-   npx cdk deploy FoundationStack CertificateStack \
-     --profile levity-test-staging \
-     --require-approval never \
-     -c skipBuild=true \
+   npx cdk bootstrap aws://<staging account id>/eu-central-1 aws://<staging account id>/us-east-1 \
+     -c environment=staging \
      -c domain=staging.levity-test.wulf.technology \
-     -c githubRepo=<org/repo>
-   ```
-
-**Action:** Capture the `HostedZoneId`, `GitHubRoleArn`, and crucially, the **`HostedZoneNameServers`** from the Staging deployment outputs.
-
-### 2. Bootstrap Production Account Second (with DNS Delegation)
-1. The domain name for production is: `levity.wulf.technology`
-2. Run the deployment against the production profile, passing the Staging Name Servers for DNS delegation:
-
-   ```bash
-   cd infrastructure
-   npx cdk bootstrap aws://unknown-account/eu-central-1 aws://unknown-account/us-east-1 \
-     --profile levity-test-production
-
-   npx cdk deploy FoundationStack CertificateStack \
-     --profile levity-test-production \
-     --require-approval never \
-     -c skipBuild=true \
+     --profile levity-test-staging
+   npx cdk bootstrap aws://<production account id>/eu-central-1 aws://<production account id>/us-east-1 \
+     -c environment=production \
      -c domain=levity-test.wulf.technology \
-     -c githubRepo=<org/repo> \
-     -c stagingNameServers="ns-XXXX.awsdns-XX.org, ns-YYYY.awsdns-YY.co.uk, ..." # Use comma-separated list from Step 1
+     --profile levity-test-production
    ```
 
-**Action:** Capture the `HostedZoneNameServers` from the **Production** deployment outputs.
+Deploy the `FoundationStack` and `CertificateStack` to set up the base infrastructure for both accounts following the rule for those base stacks:
+
+@../rules/foundation-stack.md
+
+**Action:** Capture the `HostedZoneNameServers` from the **production** deployment outputs.
 
 ## Configure DNS at Registrar
 
 Guide the user to configure their DNS registrar.
 
 1.  **Notify the User**: Provide the 4 **Production** NS records from the second deployment.
-2.  Ask them to configure these 4 Name Servers as the Custom DNS for the root domain `levity.wulf.technology` at their registrar.
+2.  Ask them to configure these 4 Name Servers as the Custom DNS for the root domain `%[ cookiecutter.domain_name ]%` at their registrar.
 3.  Explain that they do *not* configure the staging NS records at the registrar; the production AWS account is now delegating traffic to them automatically.
 4.  Wait for propagation (usually minutes).
 
@@ -111,12 +99,15 @@ Offer to store them in the GitHub repository using the `gh` CLI.
     gh auth status || gh auth login
 
     # Set Variables (Non-sensitive)
-    gh variable set HOSTED_ZONE_ID_STAGING -b"<HostedZoneId>" -R <org/repo>
     gh variable set DOMAIN_STAGING -b"<domain-name>" -R <org/repo>
 
     # Set Secrets (Sensitive)
     gh secret set AWS_ROLE_ARN_STAGING -b"<GitHubRoleArn>" -R <org/repo>
     ```
+4. same for production.
+
+**Important:** Use exactly those names.
+Other names can be added if they are required for the application but follow the `_STAGING|PRODUCTION` suffix.
 
 ## Verify
 

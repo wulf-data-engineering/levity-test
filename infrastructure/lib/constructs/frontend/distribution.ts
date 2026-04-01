@@ -5,7 +5,7 @@ import * as origins from 'aws-cdk-lib/aws-cloudfront-origins';
 import * as acm from 'aws-cdk-lib/aws-certificatemanager';
 import * as apigateway from 'aws-cdk-lib/aws-apigateway';
 import * as s3 from 'aws-cdk-lib/aws-s3';
-import { AppConfig } from '../../config';
+import { AppConfig } from "../../config";
 import { BehaviorOptions } from 'aws-cdk-lib/aws-cloudfront';
 import * as route53 from 'aws-cdk-lib/aws-route53';
 import * as targets from 'aws-cdk-lib/aws-route53-targets';
@@ -29,9 +29,8 @@ export class FrontendDistribution extends Construct {
     // certificate setup (required by CloudFront if custom domain is used)
     let certificate: acm.ICertificate | undefined = undefined;
 
-    const domainConfig = config.domain;
-    if (domainConfig) {
-      const { domainName, hostedZone: hostedZoneConfig } = domainConfig;
+    
+      if (config.domain.domainName) {
 
       // Use passed hosted zone or fallback to config (though config usually just has ID/Name)
       // In split stack, props.hostedZone is the IHostedZone object.
@@ -45,7 +44,7 @@ export class FrontendDistribution extends Construct {
         );
       } else if (hostedZone) {
         certificate = new acm.Certificate(this, 'SiteCert', {
-          domainName: domainName,
+          domainName: config.domain.domainName,
           validation: acm.CertificateValidation.fromDns(hostedZone),
         });
       }
@@ -118,7 +117,7 @@ export class FrontendDistribution extends Construct {
     // --- CloudFront Distribution ---
     this.distribution = new cloudfront.Distribution(this, 'SiteDistribution', {
       certificate,
-      domainNames: domainConfig ? [domainConfig.domainName] : undefined,
+      domainNames: config.domain ? [config.domain.domainName] : undefined,
       defaultRootObject: 'index.html',
 
       // fallback for SPA/Dynamic routes
@@ -166,22 +165,22 @@ export class FrontendDistribution extends Construct {
     });
 
     new cdk.CfnOutput(this, 'Url', {
-      value: domainConfig
-        ? `https://${domainConfig.domainName}`
+      value: config.domain
+        ? `https://${config.domain.domainName}`
         : `https://${this.distribution.distributionDomainName}`,
       description: 'CloudFront URL',
     });
 
-    if (props.hostedZone && domainConfig) {
+    if (props.hostedZone && config.domain) {
       new route53.ARecord(this, 'SiteAliasRecord', {
         zone: props.hostedZone,
-        recordName: domainConfig.domainName,
+        recordName: config.domain.domainName,
         target: route53.RecordTarget.fromAlias(new targets.CloudFrontTarget(this.distribution)),
       });
 
       new route53.AaaaRecord(this, 'SiteAaaaAliasRecord', {
         zone: props.hostedZone,
-        recordName: domainConfig.domainName,
+        recordName: config.domain.domainName,
         target: route53.RecordTarget.fromAlias(new targets.CloudFrontTarget(this.distribution)),
       });
     }

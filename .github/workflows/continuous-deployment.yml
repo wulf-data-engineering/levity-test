@@ -113,11 +113,10 @@ jobs:
     needs: [build-backend, build-frontend, build-server-image]
     uses: ./.github/workflows/deploy.yml
     with:
-      domain: ${{ vars.DOMAIN_STAGING }}
-      hostedZoneId: ${{ vars.HOSTED_ZONE_ID_STAGING }}
-      spot: true
-      imageDigest: ${{ needs.build-server-image.outputs.digest }}
       environment: staging
+      domain: ${{ vars.DOMAIN_STAGING }}
+      serverRepositoryArn: ${{ vars.SERVER_REPOSITORY_ARN }}
+      imageDigest: ${{ needs.build-server-image.outputs.digest }}
     secrets:
       awsRoleArn: ${{ secrets.AWS_ROLE_ARN_STAGING }}
 
@@ -125,9 +124,9 @@ jobs:
     needs: [deploy-staging]
     uses: ./.github/workflows/deploy.yml
     with:
-      domain: ${{ vars.DOMAIN_PRODUCTION }}
-      hostedZoneId: ${{ vars.HOSTED_ZONE_ID_PRODUCTION }}
-      imageDigest: ${{ needs.build-server-image.outputs.digest }}
       environment: production
+      domain: ${{ vars.DOMAIN_PRODUCTION }}
+      serverRepositoryArn: ${{ vars.SERVER_REPOSITORY_ARN }}
+      imageDigest: ${{ needs.build-server-image.outputs.digest }}
     secrets:
       awsRoleArn: ${{ secrets.AWS_ROLE_ARN_PRODUCTION }}

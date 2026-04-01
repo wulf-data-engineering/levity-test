@@ -15,12 +15,18 @@ export class AppStack extends cdk.Stack {
     super(scope, id, props);
 
     const { config } = props;
+    const domainName = config.domain.domainName;
+    const isLocal = config.mode === 'local';
+
+    const hostedZone = !isLocal ? route53.HostedZone.fromLookup(this, 'Zone', {
+      domainName,
+    }) : undefined;
 
     this.terminationProtection = config.terminationProtection;
 
     const backend = new Backend(this, 'Backend', {
       config,
-      hostedZone: config.domain?.hostedZone,
+      hostedZone,
     });
 
     // Locally npm run dev is used instead
@@ -30,7 +36,7 @@ export class AppStack extends cdk.Stack {
         backendApi: backend.restApi,
         userPool: backend.userPool,
         userPoolClient: backend.userPoolClient,
-        hostedZone: config.domain?.hostedZone,
+        hostedZone,
         certificateArn: props?.certificateArn,
       });
     }

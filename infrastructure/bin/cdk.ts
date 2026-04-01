@@ -20,7 +20,7 @@ if (foundation) {
   });
 }
 
-let certificateArn: string | undefined = undefined;
+let certificateArn = app.node.tryGetContext('certificateArn');
 
 if (certificate) {
   const certStack = new CertificateStack(app, 'CertificateStack', {

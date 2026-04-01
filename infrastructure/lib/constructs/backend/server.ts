@@ -27,8 +27,6 @@ export class Server extends Construct {
     super(scope, id);
 
     const { config } = props;
-    const spotContext = scope.node.tryGetContext('spot');
-    const isSpot = spotContext === 'true' || spotContext === true || config.mode === 'sandbox';
 
     // 1. VPC - Public subnets only to save NAT Gateway costs
     this.vpc = new ec2.Vpc(this, 'Vpc', {
@@ -58,9 +56,7 @@ export class Server extends Construct {
       instanceType: ec2.InstanceType.of(ec2.InstanceClass.T4G, ec2.InstanceSize.NANO),
       machineImage: ecs.EcsOptimizedImage.amazonLinux2(ecs.AmiHardwareType.ARM),
       minCapacity: 1,
-      maxCapacity: isSpot ? 1 : 2,
-      // Spot configuration
-      spotPrice: isSpot ? '0.005' : undefined,
+      maxCapacity: props.config.environment === 'production' ? 2 : 1,
       vpcSubnets: { subnetType: ec2.SubnetType.PUBLIC },
     });
 
@@ -74,8 +70,8 @@ export class Server extends Construct {
       networkMode: ecs.NetworkMode.AWS_VPC,
     });
 
-    const repository = config.stagingRepositoryArn 
-      ? ecr.Repository.fromRepositoryArn(this, 'Repo', config.stagingRepositoryArn)
+    const repository = config.serverRepositoryArn 
+      ? ecr.Repository.fromRepositoryArn(this, 'Repo', config.serverRepositoryArn)
       : ecr.Repository.fromRepositoryName(this, 'Repo', 'levity-test/server');
 
     const container = taskDefinition.addContainer('ServerContainer', {

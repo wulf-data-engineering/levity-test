@@ -14,11 +14,10 @@ export class CertificateStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props: CertificateStackProps) {
     super(scope, id, props);
 
-    const { domain, hostedZoneId } = props.config;
+    const { domain } = props.config;
 
-    const hostedZone = route53.HostedZone.fromHostedZoneAttributes(this, 'Zone', {
-      hostedZoneId,
-      zoneName: domain,
+    const hostedZone = route53.HostedZone.fromLookup(this, 'HostedZone', {
+      domainName: domain,
     });
 
     if (hostedZone) {
