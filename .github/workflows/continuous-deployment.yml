@@ -10,13 +10,13 @@ jobs:
   build-backend:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Calculate Hash
         id: hash
         run: echo "source_hash=${{ hashFiles('backend/**') }}" >> $GITHUB_OUTPUT
       - name: Restore Backend Build
         id: cache
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: backend-artifacts/
           key: backend-${{ steps.hash.outputs.source_hash }}
@@ -47,7 +47,7 @@ jobs:
         env:
           CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
       - name: Upload Backend Artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: backend-binaries
           path: backend-artifacts/
@@ -57,19 +57,19 @@ jobs:
   build-frontend:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Calculate Hash
         id: hash
         run: echo "source_hash=${{ hashFiles('frontend/**') }}" >> $GITHUB_OUTPUT
       - name: Restore Frontend Build
         id: cache
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: frontend/build/
           key: frontend-${{ steps.hash.outputs.source_hash }}
       - name: Setup Node.js
         if: steps.cache.outputs.cache-hit != 'true'
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v6
         with:
           node-version: "20"
           cache: "npm"
@@ -84,7 +84,7 @@ jobs:
           npm ci
           npm run build
       - name: Upload Frontend Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: frontend-build
           path: frontend/build/
