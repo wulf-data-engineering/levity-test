@@ -1,18 +1,15 @@
-import { Construct } from 'constructs';
-import * as cdk from 'aws-cdk-lib';
-import * as apigateway from 'aws-cdk-lib/aws-apigateway';
-import { backendLambdaApi } from './backend-lambda';
-import * as cognito from 'aws-cdk-lib/aws-cognito';
-import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
-import * as logs from 'aws-cdk-lib/aws-logs';
-import { AppConfig } from '../../config';
-import { Server } from './server';
+import { Construct } from "constructs";
+import * as apigateway from "aws-cdk-lib/aws-apigateway";
+import { backendLambdaApi } from "./backend-lambda";
+import * as cognito from "aws-cdk-lib/aws-cognito";
+import * as dynamodb from "aws-cdk-lib/aws-dynamodb";
+import * as logs from "aws-cdk-lib/aws-logs";
+import { DeploymentConfig } from "../../config";
 
 interface ApiProps {
-  config: AppConfig;
+  deploymentConfig: DeploymentConfig;
   userPool: cognito.IUserPool;
   usersTable: dynamodb.ITable;
-  server: Server;
 }
 
 /**
@@ -28,100 +25,88 @@ export class Api extends Construct {
   constructor(scope: Construct, id: string, props: ApiProps) {
     super(scope, id);
 
-    this.gateway = this.setupApi(props.config);
+    this.gateway = this.setupApi(props);
 
-    this.apiRoot = this.gateway.root.addResource('api');
+    this.apiRoot = this.gateway.root.addResource("api");
 
-    const authorizer = new apigateway.CognitoUserPoolsAuthorizer(this, 'CognitoAuth', {
-      cognitoUserPools: [props.userPool],
-    });
+    const authorizer = new apigateway.CognitoUserPoolsAuthorizer(
+      this,
+      "CognitoAuth",
+      {
+        cognitoUserPools: [props.userPool],
+      },
+    );
     authorizer._attachToApi(this.gateway); // required until some lambda uses it
 
-    const passwordPolicyFunction = backendLambdaApi(this, 'PasswordPolicyFunction', {
-      config: props.config,
-      apiRoot: this.apiRoot,
-      binaryName: 'password-policy',
-      environment: {
-        USER_POOL_ID: props.userPool.userPoolId,
+    const passwordPolicyFunction = backendLambdaApi(
+      this,
+      "PasswordPolicyFunction",
+      {
+        deploymentConfig: props.deploymentConfig,
+        apiRoot: this.apiRoot,
+        binaryName: "password-policy",
+        environment: {
+          USER_POOL_ID: props.userPool.userPoolId,
+        },
       },
-    });
+    );
 
-    const userProfileFunction = backendLambdaApi(this, 'UserProfileFunction', {
-      config: props.config,
-      apiRoot: this.apiRoot,
-      binaryName: 'user-profile',
-      environment: {
-        USERS_TABLE_NAME: props.usersTable.tableName,
-        USER_POOL_ID: props.userPool.userPoolId,
+    const userProfileFunction = backendLambdaApi(
+      this,
+      "UserProfileFunction",
+      {
+        deploymentConfig: props.deploymentConfig,
+        apiRoot: this.apiRoot,
+        binaryName: "user-profile",
+        environment: {
+          USERS_TABLE_NAME: props.usersTable.tableName,
+          USER_POOL_ID: props.userPool.userPoolId,
+        },
+        authorizer,
       },
-      authorizer,
-    });
+    );
     props.usersTable.grantReadData(userProfileFunction);
 
     // Grant the lambda permission to describe the user pool
-    props.userPool.grant(passwordPolicyFunction, 'cognito-idp:DescribeUserPool');
-
-    this.setupServerProxy(props);
+    props.userPool.grant(
+      passwordPolicyFunction,
+      "cognito-idp:DescribeUserPool",
+    );
   }
 
-  private setupServerProxy(props: ApiProps) {
-    const vpcLink = new apigateway.VpcLink(this, 'ServerVpcLink', {
-      targets: [props.server.nlb],
-    });
+  private setupApi(props: ApiProps) {
+    const stageName = "prod";
 
-    const serverResource = this.gateway.root.addResource('server');
-    const proxyResource = serverResource.addProxy({
-      defaultIntegration: new apigateway.Integration({
-        type: apigateway.IntegrationType.HTTP_PROXY,
-        integrationHttpMethod: 'POST', // gRPC usually uses POST
-        uri: `http://${props.server.nlb.loadBalancerDnsName}:50051/{proxy}`,
-        options: {
-          connectionType: apigateway.ConnectionType.VPC_LINK,
-          vpcLink: vpcLink,
-          requestParameters: {
-            'integration.request.path.proxy': 'method.request.path.proxy',
-          },
-        },
-      }),
-      defaultMethodOptions: {
-        requestParameters: {
-          'method.request.path.proxy': true,
-        },
-      },
-    });
-  }
-
-  private setupApi(config: AppConfig) {
-    const stageName = 'prod';
-
-    const accessLogGroup = new logs.LogGroup(this, 'AccessLogs', {
-      logGroupName: 'API-Gateway-Access-Logs',
+    const accessLogGroup = new logs.LogGroup(this, "AccessLogs", {
+      logGroupName: "API-Gateway-Access-Logs",
       retention: logs.RetentionDays.THREE_DAYS,
-      removalPolicy: config.removalPolicy,
+      removalPolicy: props.deploymentConfig.removalPolicy,
     });
 
-    const gateway = new apigateway.RestApi(this, 'RestApi', {
+    const gateway = new apigateway.RestApi(this, "RestApi", {
       defaultCorsPreflightOptions: {
         allowOrigins: apigateway.Cors.ALL_ORIGINS,
         allowMethods: apigateway.Cors.ALL_METHODS,
       },
       cloudWatchRole: true,
       // register Protocol Buffers as a binary type
-      binaryMediaTypes: ['application/x-protobuf', 'application/octet-stream'],
+      binaryMediaTypes: ["application/x-protobuf", "application/octet-stream"],
       deployOptions: {
         stageName,
         loggingLevel: apigateway.MethodLoggingLevel.INFO,
         dataTraceEnabled: false, // would log full payloads (great for dev, disabled for high-volume prod)
         tracingEnabled: true, // Enable X-Ray Tracing
-        accessLogDestination: new apigateway.LogGroupLogDestination(accessLogGroup),
+        accessLogDestination: new apigateway.LogGroupLogDestination(
+          accessLogGroup,
+        ),
         accessLogFormat: apigateway.AccessLogFormat.jsonWithStandardFields(),
       },
     });
 
-    const executionLogGroup = new logs.LogGroup(this, 'ExecutionLogs', {
+    const executionLogGroup = new logs.LogGroup(this, "ExecutionLogs", {
       logGroupName: `API-Gateway-Execution-Logs_${gateway.restApiId}/${stageName}`,
       retention: logs.RetentionDays.THREE_DAYS,
-      removalPolicy: config.removalPolicy,
+      removalPolicy: props.deploymentConfig.removalPolicy,
     });
 
     // This prevents the Stage from auto-creating a "Never Expire" log group

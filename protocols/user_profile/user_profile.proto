@@ -6,11 +6,3 @@ message UserProfile {
   string first_name = 1;
   string last_name = 2;
 }
-
-service UserProfileService {
-  rpc GetProfile(GetProfileRequest) returns (UserProfile);
-}
-
-message GetProfileRequest {
-  string user_id = 1;
-}

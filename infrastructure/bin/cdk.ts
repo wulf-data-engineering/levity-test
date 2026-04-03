@@ -3,41 +3,48 @@ import * as cdk from 'aws-cdk-lib';
 import { AppStack } from '../lib/app-stack';
 import { FoundationStack } from '../lib/foundation-stack';
 import { CertificateStack } from '../lib/certificate-stack';
-import { loadDeploymentConfigs } from '../lib/config';
+import { loadDeploymentConfig } from '../lib/config';
 
 const app = new cdk.App();
-const { foundation, certificate, app: appConfig } = loadDeploymentConfigs(app);
+const deploymentConfig = loadDeploymentConfig(app);
 
-const env: cdk.Environment = {
-  account: appConfig.aws ? (process.env.CDK_DEFAULT_ACCOUNT || process.env.AWS_ACCOUNT_ID) : '000000000000',
-  region: appConfig.aws ? (process.env.CDK_DEFAULT_REGION || process.env.AWS_REGION || process.env.AWS_DEFAULT_REGION) : 'eu-central-1',
+const env = {
+  account: deploymentConfig.mode === 'local' ? '000000000000' : process.env.CDK_DEFAULT_ACCOUNT,
+  region: deploymentConfig.mode === 'local' ? 'eu-central-1' : process.env.CDK_DEFAULT_REGION,
 };
 
-if (foundation) {
-  new FoundationStack(app, 'FoundationStack', { 
+// Deploys stable infrastructure (iam roles for github actions, hosted zone, SES).
+// Deploying the foundation stack does not make sense without a github repo for the role or a domain name for the hosted zone.
+const githubRepo = app.node.tryGetContext('githubRepo');
+if (githubRepo && deploymentConfig.domainName) {
+  new FoundationStack(app, 'FoundationStack', {
     env,
-    config: foundation,
+    deploymentConfig,
+    githubRepo,
   });
 }
 
-let certificateArn = app.node.tryGetContext('certificateArn');
+let certificateArn: string | undefined = undefined;
 
-if (certificate) {
+// Create a validated certificate for the domain in us-east-1 (required for CloudFront).
+// Deploying the certificate stack does not make sense without a domain name.
+if (deploymentConfig.domainName) {
   const certStack = new CertificateStack(app, 'CertificateStack', {
     env: {
       account: env.account,
       region: 'us-east-1', // CloudFront strictly enforces ACM certificates to be in us-east-1
     },
     crossRegionReferences: true,
-    config: certificate,
+    domainName: deploymentConfig.domainName!,
   });
+  // the certificate arn is passed to the app stack as cross region reference
   certificateArn = certStack.certificateArn;
 }
 
+// Deploys the actual application stack.
 new AppStack(app, 'AppStack', {
   env,
   crossRegionReferences: true,
+  deploymentConfig,
   certificateArn,
-  config: appConfig,
 });
-
