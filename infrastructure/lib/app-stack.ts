@@ -1,28 +1,28 @@
 import * as cdk from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import { Backend } from './constructs/backend';
-import { AppConfig } from './config';
 import { Frontend } from './constructs/frontend';
+import { DeploymentConfig } from './config';
 import * as route53 from 'aws-cdk-lib/aws-route53';
 
 export interface AppStackProps extends cdk.StackProps {
+  deploymentConfig: DeploymentConfig;
   certificateArn?: string;
-  config: AppConfig;
 }
 
 export class AppStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props: AppStackProps) {
     super(scope, id, props);
 
-    const { config } = props;
-    const domainName = config.domain.domainName;
-    const isLocal = config.mode === 'local';
-
-    const hostedZone = !isLocal ? route53.HostedZone.fromLookup(this, 'Zone', {
-      domainName,
-    }) : undefined;
+    const config = props.deploymentConfig;
 
     this.terminationProtection = config.terminationProtection;
+
+    const hostedZone = config.domainName
+      ? route53.HostedZone.fromLookup(this, 'Zone', {
+          domainName: config.domainName,
+        })
+      : undefined;
 
     const backend = new Backend(this, 'Backend', {
       config,
@@ -37,7 +37,7 @@ export class AppStack extends cdk.Stack {
         userPool: backend.userPool,
         userPoolClient: backend.userPoolClient,
         hostedZone,
-        certificateArn: props?.certificateArn,
+        certificateArn: props.certificateArn,
       });
     }
   }

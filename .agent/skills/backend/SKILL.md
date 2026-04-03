@@ -101,5 +101,5 @@ If the Rust build fails in `cdk synth` (especially linking errors or missing sys
 **Steps to verify:**
 
 1.  Locate the current image tag (e.g., `20251227`) in `backend-lambda.ts`.
-2.  Compare it with the tag used in the [upstream template](https://github.com/wulf-data-engineering/levity/blob/main/template/levity-test-onboarding/infrastructure/lib/constructs/backend/backend-lambda.ts).
+2.  Compare it with the tag used in the [upstream template](https://github.com/wulf-data-engineering/levity/blob/main/template/%25%5Bcookiecutter.project_slug%5D%25/infrastructure/lib/constructs/backend/backend-lambda.ts).
 3.  If a newer date-based tag exists upstream, suggest updating the local version.

@@ -7,14 +7,14 @@ import * as path from 'path';
 import { execSync } from 'child_process';
 import * as fs from 'fs';
 import * as cognito from 'aws-cdk-lib/aws-cognito';
-import { AppConfig } from '../../config';
+import { DeploymentConfig } from '../../config';
 
 interface DeploymentProps {
   siteBucket: s3.IBucket;
   distribution: cloudfront.IDistribution;
   userPool?: cognito.IUserPool;
   userPoolClient?: cognito.IUserPoolClient;
-  config: AppConfig;
+  deploymentConfig: DeploymentConfig;
 }
 
 export class FrontendDeployment extends Construct {
@@ -30,11 +30,11 @@ export class FrontendDeployment extends Construct {
     };
 
     let assetSource: s3deploy.ISource;
-    if (props.config.frontendPath) {
+    if (props.deploymentConfig.buildConfig.frontendPath) {
       assetSource = s3deploy.Source.asset(
-        path.resolve(process.cwd(), props.config.frontendPath),
+        path.resolve(process.cwd(), props.deploymentConfig.buildConfig.frontendPath),
       );
-    } else if (props.config.build) {
+    } else if (props.deploymentConfig.buildConfig.build) {
       assetSource = s3deploy.Source.asset(frontendPath, {
         exclude: ['node_modules', 'build', '.svelte-kit', 'dist', '.git'],
         bundling: {
@@ -61,7 +61,7 @@ export class FrontendDeployment extends Construct {
         },
       });
     } else {
-      // Stub for foundation-only deployments (DEFAULT)
+      // Default to stub for foundation-only deployments or fast-synth speed
       assetSource = s3deploy.Source.asset(path.join(process.cwd(), 'stub/frontend'));
     }
 

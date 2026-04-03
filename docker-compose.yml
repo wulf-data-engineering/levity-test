@@ -29,5 +29,6 @@ services:
       - AWS_SECRET_ACCESS_KEY=test
     volumes:
       - "./local/cognito-local-volume:/app/.cognito"
+
 volumes:
   cognito-data:

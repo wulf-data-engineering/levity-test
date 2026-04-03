@@ -2,15 +2,27 @@ import * as cdk from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import * as route53 from 'aws-cdk-lib/aws-route53';
 import * as ses from 'aws-cdk-lib/aws-ses';
+import { DeploymentConfig } from './config';
 import * as iam from 'aws-cdk-lib/aws-iam';
-import * as ecr from 'aws-cdk-lib/aws-ecr';
-
-import { FoundationConfig } from './config';
 
 export interface FoundationStackProps extends cdk.StackProps {
-  config: FoundationConfig;
+  deploymentConfig: DeploymentConfig;
+  githubRepo: string;
 }
 
+/**
+ * This stack deploys stable infrastructure:
+ * - IAM roles for GitHub Actions
+ * - Hosted zone for the domain
+ * - SES for sending emails
+ *
+ * IMPORTANT: For the staging subdomain to work, it must be delegated by the the production hosted zone.
+ * Therefore, in production environment the foundation stack required the flag `stagingNameServers`:
+ *
+ * ```bash
+ * cdk deploy FoundationStack -c environment=production -c domain=example.com -c stagingNameServers="ns1.example.com,ns2.example.com,ns3.example.com,ns4.example.com"
+ * ```
+ */
 export class FoundationStack extends cdk.Stack {
   public readonly hostedZone?: route53.IHostedZone;
   public readonly sesIdentity?: ses.EmailIdentity;
@@ -18,25 +30,25 @@ export class FoundationStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props: FoundationStackProps) {
     super(scope, id, props);
 
-    const { domain, githubRepo, productionAccountId, stagingNameServers } = props.config;
+    const config = props.deploymentConfig;
 
     // Hosted Zone (DNS for the domain)
     this.hostedZone = new route53.PublicHostedZone(this, 'HostedZone', {
-      zoneName: domain,
+      zoneName: config.domainName!,
     });
 
     // SES Identity (allows app and Cognito to send emails from the domain)
     this.sesIdentity = new ses.EmailIdentity(this, 'SesIdentity', {
-      identity: ses.Identity.domain(domain),
+      identity: ses.Identity.domain(config.domainName!),
       dkimSigning: true,
     });
 
     // DKIM Records (configures DNS entries to verify the SES identity)
-    this.sesIdentity.dkimRecords.forEach((record, index) => {
+    this.sesIdentity.dkimRecords.forEach((record: any, index: number) => {
       // record.name is something like "token._domainkey.example.com"
       // We need just "token._domainkey"
       // Since it's a Token, we use CloudFormation intrinsic functions
-      const recordName = cdk.Fn.select(0, cdk.Fn.split(`.${domain}`, record.name));
+      const recordName = cdk.Fn.select(0, cdk.Fn.split(`.${config.domainName}`, record.name));
 
       new route53.CnameRecord(this, `DkimRecord${index}`, {
         zone: this.hostedZone!,
@@ -54,7 +66,7 @@ export class FoundationStack extends cdk.Stack {
     const githubRole = new iam.Role(this, 'GitHubActionRole', {
       assumedBy: new iam.WebIdentityPrincipal(githubProvider.openIdConnectProviderArn, {
         StringLike: {
-          'token.actions.githubusercontent.com:sub': `repo:${githubRepo}:*`,
+          'token.actions.githubusercontent.com:sub': `repo:${props.githubRepo}:*`,
         },
       }),
       description: 'Role for GitHub Actions to deploy stacks',
@@ -124,57 +136,29 @@ export class FoundationStack extends cdk.Stack {
       });
     }
 
+    new cdk.CfnOutput(this, 'HostedZoneId', {
+      value: this.hostedZone.hostedZoneId,
+      description:
+        'Hosted Zone ID for this environment. Provide this to the AppStack GitHub Actions variables.',
+    });
 
     // Cross-Account Staging Delegation
-    const environment = scope.node.tryGetContext('environment');
+    const stagingNameServersStr = scope.node.tryGetContext('stagingNameServers');
+    const environment = config.environment;
 
-    if (environment === 'production' && !stagingNameServers) {
-      throw new Error(
-        '❌ "stagingNameServers" context variable is required for production deployments to delegate the staging subdomain.',
-      );
-    }
-
-    if (stagingNameServers) {
-      const stagingNameServersList = stagingNameServers.split(',').map((ns: string) => ns.trim());
-      new route53.ZoneDelegationRecord(this, 'StagingDelegation', {
-        zone: this.hostedZone!,
-        recordName: 'staging',
-        nameServers: stagingNameServersList,
-      });
-    }
-
-    // ECR Repository for the standalone server - Only in staging
-    if (environment === 'staging') {
-      const repository = new ecr.Repository(this, 'ServerRepository', {
-        repositoryName: 'levity-test/server',
-        removalPolicy: cdk.RemovalPolicy.DESTROY, // Usually FoundationStack is kept, but allow cleanup for this test
-        autoDeleteImages: true,
-        lifecycleRules: [
-          {
-            maxImageCount: 5,
-            description: 'Keep only 5 last images',
-          },
-        ],
-      });
-
-      // Grant production account pull access if provided
-      if (productionAccountId) {
-        repository.addToResourcePolicy(new iam.PolicyStatement({
-          sid: 'AllowProductionPull',
-          effect: iam.Effect.ALLOW,
-          principals: [new iam.AccountPrincipal(productionAccountId)],
-          actions: [
-            'ecr:BatchCheckLayerAvailability',
-            'ecr:GetDownloadUrlForLayer',
-            'ecr:BatchGetImage',
-          ],
-        }));
+    if (stagingNameServersStr) {
+      if (environment === 'production') {
+        const stagingNameServers = stagingNameServersStr.split(',').map((ns: string) => ns.trim());
+        new route53.ZoneDelegationRecord(this, 'StagingDelegation', {
+          zone: this.hostedZone!,
+          recordName: 'staging',
+          nameServers: stagingNameServers,
+        });
+      } else {
+        throw new Error(
+          '❌ "stagingNameServers" context variable is only allowed for production deployments.',
+        );
       }
-
-      new cdk.CfnOutput(this, 'ServerRepositoryArn', {
-        value: repository.repositoryArn,
-        description: 'ARN of the gRPC server ECR repository',
-      });
     }
   }
 }

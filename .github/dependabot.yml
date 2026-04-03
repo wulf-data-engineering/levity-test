@@ -11,8 +11,9 @@ updates:
       timezone: "Europe/Berlin"
     groups:
       github-actions:
-        patterns: ["*"]
-  # Frontend/Infrastructure
+        patterns:
+          - "*"
+  # npm (Frontend/Infrastructure)
   - package-ecosystem: "npm"
     directories:
       - "frontend/"
@@ -23,9 +24,34 @@ updates:
       timezone: "Europe/Berlin"
     open-pull-requests-limit: 5
     groups:
-      minor-patch-typescript-dependencies:
-        patterns: ["*"]
-        update-types: ["minor", "patch"]
+      minor-patch-upgrades:
+        # Make sure you add all more specific patterns of groups tackling major updates
+        patterns:
+          - "*"
+          - "*vite*"
+          - "*svelte*"
+          - "*aws*"
+        exclude-patterns:
+          - "@playwright/test" # requires an update of the docker image
+        update-types:
+          - "minor"
+          - "patch"
+      vite-major-upgrades:
+        patterns:
+          - "*vite*" # covers also vitest, but major updates on same day are rare
+        update-types:
+          - "major"
+      svelte-major-upgrades:
+        patterns:
+          - "*svelte*"
+        update-types:
+          - "major"
+      aws-major-upgrades:
+        patterns:
+          - "*aws*"
+        update-types:
+          - "major"
+
   # Backend
   - package-ecosystem: "cargo"
     directories:
@@ -36,22 +62,26 @@ updates:
       timezone: "Europe/Berlin"
     open-pull-requests-limit: 5
     groups:
-      minor-patch-rust-dependencies:
-        patterns: ["*"]
-        update-types: ["minor", "patch"]
+      minor-patch-upgrades:
+        # Make sure you add all more specific patterns of groups tackling major updates
+        patterns:
+          - "*"
+          - "*aws*"
+          - "lambda*"
+        update-types:
+          - "minor"
+          - "patch"
+      aws-major-upgrades:
+        patterns:
+          - "*aws*"
+          - "lambda*"
+        update-types:
+          - "major"
   # Backend's toolchain
   - package-ecosystem: "rust-toolchain"
     directories:
       - "backend/"
     schedule:
       interval: "weekly"
-      time: "09:00"
-      timezone: "Europe/Berlin"
-  # Docker Compose
-  - package-ecosystem: "docker"
-    directories:
-      - "/"
-    schedule:
-      interval: "daily"
       time: "09:00"
       timezone: "Europe/Berlin"
