@@ -26,8 +26,8 @@
   },
   "devDependencies": {
     "@types/jest": "30.0.0",
-    "@types/node": "25.5.0",
-    "aws-cdk": "2.1116.0",
+    "@types/node": "25.5.2",
+    "aws-cdk": "2.1117.0",
     "cdk-nag": "^2.37.55",
     "jest": "30.3.0",
     "prettier": "^3.8.1",
@@ -36,7 +36,7 @@
     "typescript": "5.9.3"
   },
   "dependencies": {
-    "aws-cdk-lib": "2.247.0",
+    "aws-cdk-lib": "2.248.0",
     "cargo-lambda-cdk": "^0.0.36",
     "constructs": "^10.6.0"
   }
