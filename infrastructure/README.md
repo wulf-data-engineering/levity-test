@@ -16,36 +16,44 @@ Configuration is handled in [lib/config.ts](lib/config.ts) and avoids runtime lo
 
 Configuration is passed via CDK context variables (`-c key=value`).
 
-| Variable       | Description                                  | Stacks                    |
-| :------------- | :------------------------------------------- | :------------------------ |
-| `mode`         | `local`, `sandbox`, `stage` (default)        | Both                      |
-| `domain`       | The domain name (e.g. `staging.example.com`) | Both (`stage` mode)       |
-| `githubRepo`   | GitHub repository (e.g. `org/repo`) for OIDC | `FoundationStack`         |
-| `hostedZoneId` | ID of the hosted zone                        | `AppStack` (`stage` mode) |
-| `skipBuild`    | Skip building application code               | Both                      |
+| Variable             | Description                                             | Stacks                   |
+| :------------------- | :------------------------------------------------------ | :----------------------- |
+| `mode`               | `local`, `environment`, `sandbox` (default)             | all                      |
+| `environment`        | `staging` or `production` (required for `environment`)  | all                      |
+| `domain`             | The domain name (e.g. `staging.example.com`)            | all (`environment` mode) |
+| `githubRepo`         | GitHub repository (e.g. `org/repo`) for OIDC            | `FoundationStack`        |
+| `stagingNameServers` | Name servers for staging delegation (`production` only) | `FoundationStack`        |
+| `backendPath`        | Path to pre-compiled backend                            | `AppStack`               |
+| `frontendPath`       | Path to pre-compiled frontend                           | `AppStack`               |
+| `build`              | Build application code locally (default: false)         | `AppStack`               |
 
 ## Modes
 
 There are three modes of deployment defined in [lib/config.ts](lib/config.ts).
 
-- **stage**: deployed from Github Actions to an AWS account, staging or production
-- **sandbox**: deployed from local cdk to an isolated AWS account, e.g. for branch testing
-- **local**: deployed from local cdk to localstack for local testing
+- **environment**: deployed from Github Actions to an AWS account, staging or production. Requires `-c environment=staging|production`.
+- **sandbox**: deployed from local cdk to an isolated AWS account, e.g. for branch testing.
+- **local**: deployed from local cdk to localstack for local testing.
 
-### environment (default / `mode=stage`)
+### environment (`environment=production|staging`)
 
-Deploys against an **AWS** account, typically by CI/CD into an environment like _production_ or _staging_.
+Deploys against an **AWS** account like _production_ or _staging_.
+Termination protection is enabled for both environments.
+_production_ is configured to keep persistent resources after stack deletion.
+_staging_ is configured to destroy resources after stack deletion.
 
-- **FoundationStack**: Contains stateful resources (Hosted Zone, SES). Termination protection is enabled. Requires `domain` and `githubRepo`.
-- **CertificateStack**: Contains the ACM Certificate deployed to us-east-1. Requires `domain`.
-- **AppStack**: Contains the application (Backend, Frontend). Termination protection is enabled. Requires `domain` and `hostedZone`.
+- **FoundationStack**: Contains stateful resources (Hosted Zone, SES). Requires `domain`, `githubRepo`, and `environment`. When `environment=production`, the `stagingNameServers` context variable is **mandatory** to delegate the `staging` subdomain to the staging account.
+- **CertificateStack**: Contains the ACM Certificate deployed to us-east-1. Requires `domain` and `environment`.
+- **AppStack**: Contains the application (Backend, Frontend). Requires `domain`, `hostedZone`, and `environment`, typically by CI/CD.
 
-### sandbox (`cdk deploy -c mode=sandbox`)
+### sandbox (`mode=sandbox`, default)
 
 Deploys against an **AWS** account for personal testing. Stateful resources are destroyed on deletion. Termination protection is disabled.
 
-The sandbox does not require the **FoundationStack**, a domain or a hosted zone.
+The sandbox does not require the **FoundationStack**, **CertificateStack** or a domain.
 It uses a simple cloud front distribution URL and default email from Cognito.
+
+You need to pass `-c build=true` to build backend and frontend locally during CDK deployment.
 
 ### local (`AWS_ENDPOINT_URL=http://...`)
 
@@ -78,13 +86,13 @@ cdk --version  # to verify installation
 
 ## Useful commands
 
-- `cdk bootstrap`: bootstrap the environment
+- `cdk bootstrap`: bootstraps CDK for an AWS region
 - `cdk deploy FoundationStack|CertificateStack|AppStack`: deploys one of the stacks
 - `cdk diff`: compare deployed stack with current state
 - `cdk synth`: emits the synthesized CloudFormation template
 - `npm run test`: perform the jest unit tests
 
-## Deploy to a stage on AWS
+## Deploy to an environment on AWS
 
 ### 1. FoundationStack (Setup)
 
@@ -95,40 +103,80 @@ The foundation stack is deployed once to set up the account.
 First, bootstrap the environment (if not already done):
 
 ```bash
-npx cdk bootstrap --profile [profile] -c skipBuild=true
+npx cdk bootstrap --profile [profile]
 ```
 
-Then deploy the stack:
+Then deploy the foundation stack for staging:
+
+**Staging:**
 
 ```bash
-npx cdk deploy FoundationStack CertificateStack \
+npx cdk deploy FoundationStack \
   --profile <profile> \
+  -c environment=staging \
   -c domain=<domain> \
-  -c githubRepo=<org/repo> \
-  -c skipBuild=true
+  -c githubRepo=<org/repo>
 ```
 
-`skipBuild` is important to omit building the Rust binaries.
+Capture the outputs.
+You need the staging name servers for the production deployment.
+
+**Production:**
+
+```bash
+npx cdk deploy FoundationStack \
+  --profile <profile> \
+  -c environment=production \
+  -c domain=<domain> \
+  -c githubRepo=<org/repo> \
+  -c stagingNameServers=<ns1,ns2...>
+```
+
+`build` defaults to `false`, which is important to omit building the Rust binaries during foundation setup (uses stubs).
 
 **After deployment:**
 
-Update your domain registrar with the output Name Servers.
+Update your domain registrar with the **production** name servers.
 
 Store the outputs in GitHub Secrets:
 
-- `HOSTED_ZONE_ID_[STAGING|PRODUCTION]`: `HostedZoneId`
 - `AWS_ROLE_ARN_[STAGING|PRODUCTION]`: `GitHubRoleArn`
 - `DOMAIN_[STAGING|PRODUCTION]`: domain name
+- `CERTIFICATE_ARN_[STAGING|PRODUCTION]`: domain name
 
-### 2. AppStack (Application)
+### 2. CertificateStack
+
+The certificate stacks may take a while until AWS validates the domain ownership.
+
+**Staging:**
+
+```bash
+npx cdk deploy CertificateStack \
+  --profile <profile> \
+  -c environment=staging \
+  -c domain=<domain>
+```
+
+**Production:**
+
+```bash
+npx cdk deploy CertificateStack \
+  --profile <profile> \
+  -c environment=production \
+  -c domain=<domain>
+```
+
+### 3. AppStack (Application)
 
 The app stack is deployed frequently, usually via GitHub Actions.
 
 ```bash
 npx cdk deploy AppStack \
   --profile <profile> \
+  -c environment=<staging|production> \
   -c domain=<domain> \
-  -c hostedZoneId=<id>
+  -c backendPath=<path>
+  -c frontendPath=<path>
 ```
 
 ## Deploy to a sandbox AWS account
@@ -137,8 +185,12 @@ Just deploy the app stack without domain, hosted zone and therefore no certifica
 
 ```bash
 npx cdk deploy AppStack \
-  --profile <profile>
+  --profile <profile> \
+  -c mode=sandbox \
+  -c build=true
 ```
+
+Pass `build=true` if you want cdk to bundle the application code locally.
 
 ## Deploy locally
 

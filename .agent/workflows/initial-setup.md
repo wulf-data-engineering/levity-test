@@ -42,8 +42,8 @@ Ask the user to create or sign in to:
 Ask the user to configure SSO logins and profiles for both via CLI:
 
     ```bash
-    aws configure sso --profile %[ cookiecutter.project_slug ]%-staging
-    aws configure sso --profile %[ cookiecutter.project_slug ]%-production
+    aws configure sso --profile levity-test-staging
+    aws configure sso --profile levity-test-production
     ```
 
 Make sure the developer has logged into AWS with both profiles:
@@ -55,23 +55,23 @@ Make sure the developer has logged into AWS with both profiles:
 
 **Action:** Capture the account ids for both environents.
 
-## Deploy foundation stack (Cross-Account Setup)
+## Bootstrap both accounts
 
 Bootstrap cdk for both environments:
 
    ```bash
    cd infrastructure
    npx cdk bootstrap aws://<staging account id>/eu-central-1 aws://<staging account id>/us-east-1 \
-     -c environment=staging \
-     -c domain=staging.levity-test.wulf.technology \
      --profile levity-test-staging
    npx cdk bootstrap aws://<production account id>/eu-central-1 aws://<production account id>/us-east-1 \
-     -c environment=production \
-     -c domain=levity-test.wulf.technology \
      --profile levity-test-production
    ```
 
-Deploy the `FoundationStack` and `CertificateStack` to set up the base infrastructure for both accounts following the rule for those base stacks:
+## Deploy foundation stack (Cross-Account Setup)
+
+Deploy the `FoundationStack` to set up the base infrastructure for both accounts.
+
+**Important:** Follow exactly the following referenced rules:
 
 @../rules/foundation-stack.md
 
@@ -81,10 +81,38 @@ Deploy the `FoundationStack` and `CertificateStack` to set up the base infrastru
 
 Guide the user to configure their DNS registrar.
 
-1.  **Notify the User**: Provide the 4 **Production** NS records from the second deployment.
-2.  Ask them to configure these 4 Name Servers as the Custom DNS for the root domain `%[ cookiecutter.domain_name ]%` at their registrar.
+1.  **Notify the User**: Provide the 4 **production** NS records from the second deployment.
+2.  Ask them to configure these 4 Name Servers as the Custom DNS for the root domain `levity-test.wulf.technology` at their registrar.
 3.  Explain that they do *not* configure the staging NS records at the registrar; the production AWS account is now delegating traffic to them automatically.
 4.  Wait for propagation (usually minutes).
+
+Verify using:
+
+   ```bash
+    dig +short NS staging.levity-test.wulf.technology
+    dig +short NS levity-test.wulf.technology
+   ```
+
+## Deploy certificate stack
+
+Now the certificate stack can be deployed:
+
+   ```bash
+   npx cdk deploy CertificateStack \
+     --profile levity-test-staging \
+     --require-approval never \
+     -c environment=staging \
+     -c domain=staging.levity-test.wulf.technology \
+   ```
+
+
+   ```bash
+   npx cdk deploy CertificateStack \
+     --profile levity-test-production \
+     --require-approval never \
+     -c environment=production \
+     -c domain=levity-test.wulf.technology \
+   ```
 
 ## Configure GitHub Secrets and Variables
 
@@ -99,15 +127,17 @@ Offer to store them in the GitHub repository using the `gh` CLI.
     gh auth status || gh auth login
 
     # Set Variables (Non-sensitive)
-    gh variable set DOMAIN_STAGING -b"<domain-name>" -R <org/repo>
+    gh variable set DOMAIN_STAGING -b"staging.levity-test.wulf.technology" -R <org/repo>
+    gh variable set DOMAIN_PRODUCTION -b"levity-test.wulf.technology" -R <org/repo>
 
     # Set Secrets (Sensitive)
     gh secret set AWS_ROLE_ARN_STAGING -b"<GitHubRoleArn>" -R <org/repo>
+    gh secret set AWS_ROLE_ARN_PRODUCTION -b"<GitHubRoleArn>" -R <org/repo>
     ```
-4. same for production.
 
 **Important:** Use exactly those names.
 Other names can be added if they are required for the application but follow the `_STAGING|PRODUCTION` suffix.
+
 
 ## Verify
 
@@ -115,8 +145,12 @@ Other names can be added if they are required for the application but follow the
 
    ```bash
    aws sesv2 get-email-identity \
-     --email-identity <domain-name> \
-     --profile <user-profile>
+     --email-identity levity-test.wulf.technology \
+     --profile levity-test-production
+
+   aws sesv2 get-email-identity \
+     --email-identity staging.levity-test.wulf.technology \
+     --profile levity-test-staging
    ```
 
    - **Expected Status**: `SUCCESS` (Verified)
@@ -124,4 +158,4 @@ Other names can be added if they are required for the application but follow the
    - If correct: Check DNS propagation using `dig`.
    - Explain the result, suggest waiting and retrying the check.
 
-2. Once verified, suggest pushing to main to trigger the deployment.
+2. Once verified, suggest pushing to main to trigger the first deployment.

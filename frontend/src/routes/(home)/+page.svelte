@@ -11,7 +11,6 @@
 	import { validateEmail } from '$lib/validation';
 	import { ValidatedInput } from '$lib/components/validatedInput';
 	import { ValidatedForm } from '$lib/components/validatedForm';
-	import ServerProfile from '$lib/components/ServerProfile.svelte';
 
 	async function signOut() {
 		try {
@@ -168,7 +167,3 @@
 		</Card.Content>
 	{/if}
 </Card.Root>
-
-<div class="m-auto mt-8 w-full max-w-sm">
-	<ServerProfile />
-</div>

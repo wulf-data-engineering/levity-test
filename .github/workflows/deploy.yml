@@ -4,18 +4,10 @@ name: Deploy Stack
 on:
   workflow_call:
     inputs:
-      domain:
+      environment:
         required: true
         type: string
-      imageDigest:
-        description: "The ECR image digest to deploy"
-        required: false
-        type: string
-      serverRepositoryArn:
-        description: "The ECR repository ARN"
-        required: false
-        type: string
-      environment:
+      domain:
         required: true
         type: string
     secrets:
@@ -64,20 +56,9 @@ jobs:
         working-directory: ./infrastructure
         run: |
           npx cdk deploy AppStack --require-approval never \
+            -c mode=environment \
             -c environment=${{ inputs.environment }} \
             -c domain=${{ inputs.domain }} \
-            -c serverRepositoryArn=${{ inputs.serverRepositoryArn }} \
-            -c imageDigest=${{ inputs.imageDigest }} \
             -c githubRepo=${{ github.repository }} \
             -c backendPath=../downloaded-backend \
-            -c frontendPath=../downloaded-frontend \
-
-      - name: Login to Amazon ECR
-        id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v2
-
-      - name: Tag Image as ${{ inputs.environment }}
-        run: |
-          REPO="levity-test/server"
-          MANIFEST=$(aws ecr batch-get-image --repository-name $REPO --image-ids imageDigest=${{ inputs.imageDigest }} --query 'images[0].imageManifest' --output text)
-          aws ecr put-image --repository-name $REPO --image-tag ${{ inputs.environment }} --image-manifest "$MANIFEST"
+            -c frontendPath=../downloaded-frontend

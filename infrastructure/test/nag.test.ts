@@ -2,7 +2,6 @@ import * as cdk from 'aws-cdk-lib';
 import { Annotations, Match } from 'aws-cdk-lib/assertions';
 import { AwsSolutionsChecks, NagSuppressions } from 'cdk-nag';
 import * as Cdk from '../lib/app-stack';
-import { loadDeploymentConfigs } from '../lib/config';
 
 test('No Unsuppressed Security Errors', () => {
   delete process.env.AWS_ENDPOINT_URL;
@@ -17,10 +16,20 @@ test('No Unsuppressed Security Errors', () => {
       email_sender_name: 'Test Sender',
       email_replyto: 'noreply@example.com',
       aws: true,
+      build: false,
     },
   });
-  const configs = loadDeploymentConfigs(app);
-  const stack = new Cdk.AppStack(app, 'CdkTestStack', { config: configs.app });
+  const stack = new Cdk.AppStack(app, 'CdkTestStack', {
+    deploymentConfig: {
+      mode: 'environment',
+      environment: 'staging',
+      aws: true,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+      autoDeleteObjects: true,
+      terminationProtection: false,
+      buildConfig: { build: false },
+    },
+  });
 
   cdk.Aspects.of(stack).add(new AwsSolutionsChecks({ verbose: true }));
 

@@ -6,38 +6,46 @@ on:
       - main
 
 jobs:
+  # Builds the backend if it wasn't part of the cache
   build-backend:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Calculate Hash
+        id: hash
+        run: echo "source_hash=${{ hashFiles('backend/**') }}" >> $GITHUB_OUTPUT
+      - name: Restore Backend Build
+        id: cache
+        uses: actions/cache@v4
+        with:
+          path: backend-artifacts/
+          key: backend-${{ steps.hash.outputs.source_hash }}
       - uses: Swatinem/rust-cache@v2
+        if: steps.cache.outputs.cache-hit != 'true'
         with:
           workspaces: ./backend
           cache-on-failure: true
-      - name: Install Rust
-        working-directory: ./backend
-        run: rustup show # picks the version from rust-toolchain.toml
-      - name: Setup Cross-Compilation
-        working-directory: ./backend
+      - name: Install Protoc
+        if: steps.cache.outputs.cache-hit != 'true'
+        uses: arduino/setup-protoc@v3
+      - name: Cross compile Backend and package artifacts
+        if: steps.cache.outputs.cache-hit != 'true'
+        working-directory: backend
         run: |
           sudo apt-get update
           sudo apt-get install -y gcc-aarch64-linux-gnu
           rustup target add aarch64-unknown-linux-gnu
-      - name: Install Protoc
-        uses: arduino/setup-protoc@v3
-      - name: Compile Backend
-        working-directory: backend
-        run: cargo build --release --target aarch64-unknown-linux-gnu
-        env:
-          CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
-      - name: Package Artifacts
-        run: |
-          mkdir -p backend-artifacts
-          for file in backend/target/aarch64-unknown-linux-gnu/release/*; do
+
+          cargo build --release --target aarch64-unknown-linux-gnu
+
+          mkdir -p ../backend-artifacts
+          for file in target/aarch64-unknown-linux-gnu/release/*; do
             if [ -f "$file" ]; then
-              cp "$file" backend-artifacts/
+              cp "$file" ../backend-artifacts/
             fi
           done
+        env:
+          CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
       - name: Upload Backend Artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -45,78 +53,49 @@ jobs:
           path: backend-artifacts/
           retention-days: 1
 
+  # Builds the frontend if it wasn't part of the cache
   build-frontend:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Calculate Hash
+        id: hash
+        run: echo "source_hash=${{ hashFiles('frontend/**') }}" >> $GITHUB_OUTPUT
+      - name: Restore Frontend Build
+        id: cache
+        uses: actions/cache@v4
+        with:
+          path: frontend/build/
+          key: frontend-${{ steps.hash.outputs.source_hash }}
       - name: Setup Node.js
+        if: steps.cache.outputs.cache-hit != 'true'
         uses: actions/setup-node@v3
         with:
           node-version: "20"
           cache: "npm"
           cache-dependency-path: frontend/package-lock.json
-      - name: Install dependencies
-        working-directory: ./frontend
-        run: npm ci
       - name: Install Protoc
+        if: steps.cache.outputs.cache-hit != 'true'
         uses: arduino/setup-protoc@v3
       - name: Build Frontend
+        if: steps.cache.outputs.cache-hit != 'true'
         working-directory: ./frontend
-        run: npm run build
+        run: |
+          npm ci
+          npm run build
       - name: Upload Frontend Artifact
         uses: actions/upload-artifact@v4
         with:
           name: frontend-build
           path: frontend/build/
           retention-days: 1
-  build-server-image:
-    needs: [build-backend]
-    runs-on: ubuntu-latest
-    permissions:
-      id-token: write
-      contents: read
-    outputs:
-      digest: ${{ steps.build.outputs.digest }}
-    steps:
-      - uses: actions/checkout@v4
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN_STAGING }}
-          aws-region: eu-central-1
-      - name: Login to Amazon ECR
-        id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v2
-      - name: Download Backend Binary
-        uses: actions/download-artifact@v4
-        with:
-          name: backend-binaries
-          path: backend-artifacts
-      - name: Prepare Docker Build Context
-        run: |
-          cp backend-artifacts/server backend/server
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-      - name: Build and Push Server Image
-        id: build
-        uses: docker/build-push-action@v5
-        with:
-          context: ./backend
-          file: ./backend/Dockerfile.server
-          platforms: linux/arm64
-          push: true
-          tags: ${{ steps.login-ecr.outputs.registry }}/levity-test/server:latest
 
   deploy-staging:
-    needs: [build-backend, build-frontend, build-server-image]
+    needs: [build-backend, build-frontend]
     uses: ./.github/workflows/deploy.yml
     with:
       environment: staging
       domain: ${{ vars.DOMAIN_STAGING }}
-      serverRepositoryArn: ${{ vars.SERVER_REPOSITORY_ARN }}
-      imageDigest: ${{ needs.build-server-image.outputs.digest }}
     secrets:
       awsRoleArn: ${{ secrets.AWS_ROLE_ARN_STAGING }}
 
@@ -126,7 +105,5 @@ jobs:
     with:
       environment: production
       domain: ${{ vars.DOMAIN_PRODUCTION }}
-      serverRepositoryArn: ${{ vars.SERVER_REPOSITORY_ARN }}
-      imageDigest: ${{ needs.build-server-image.outputs.digest }}
     secrets:
       awsRoleArn: ${{ secrets.AWS_ROLE_ARN_PRODUCTION }}

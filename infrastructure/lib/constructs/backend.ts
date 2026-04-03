@@ -3,15 +3,14 @@ import * as apigateway from 'aws-cdk-lib/aws-apigateway';
 import * as cognito from 'aws-cdk-lib/aws-cognito';
 import { Api } from './backend/api';
 import { Identity } from './backend/identity';
-import { Server } from './backend/server';
-import { AppConfig } from '../config';
+import { DeploymentConfig } from '../config';
 import * as route53 from 'aws-cdk-lib/aws-route53';
 import * as ses from 'aws-cdk-lib/aws-ses';
 import { VersionedTable } from './backend/dynamodb';
 import { AttributeType, ProjectionType } from 'aws-cdk-lib/aws-dynamodb';
 
 export interface BackendProps {
-  config: AppConfig;
+  config: DeploymentConfig;
   hostedZone?: route53.IHostedZone;
 }
 
@@ -27,11 +26,11 @@ export class Backend extends Construct {
 
   constructor(scope: Construct, id: string, props: BackendProps) {
     super(scope, id);
-    const { config } = props;
+    const deploymentConfig = props.config;
 
     const usersTable = new VersionedTable(this, 'UsersTable', {
       tableName: 'users',
-      removalPolicy: config.removalPolicy,
+      removalPolicy: deploymentConfig.removalPolicy,
     });
 
     usersTable.addGlobalSecondaryIndex({
@@ -44,9 +43,9 @@ export class Backend extends Construct {
     });
 
     // Locally cognito-local and cargo lambda watch are used instead
-    if (config.aws) {
+    if (deploymentConfig.aws) {
       const identity = new Identity(this, 'Identity', {
-        config,
+        deploymentConfig,
         usersTable,
         hostedZone: props.hostedZone,
       });
@@ -54,15 +53,10 @@ export class Backend extends Construct {
       this.userPool = identity.userPool;
       this.userPoolClient = identity.userPoolClient;
 
-      const server = new Server(this, 'Server', {
-        config,
-      });
-
       const api = new Api(this, 'Api', {
-        config,
+        deploymentConfig,
         userPool: this.userPool,
         usersTable,
-        server,
       });
       this.restApi = api.gateway;
     }
