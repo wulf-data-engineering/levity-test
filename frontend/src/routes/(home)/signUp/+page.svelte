@@ -6,11 +6,7 @@
 	import { toastError, toastSuccess } from '../toasts';
 	import { ValidatedInput } from '$lib/components/validatedInput';
 	import { ValidatedForm } from '$lib/components/validatedForm';
-	import {
-		validateEmail,
-		validateNewPassword,
-		validatePasswordRepetition
-	} from '$lib/validation';
+	import { validateEmail, validateNewPassword, validatePasswordRepetition } from '$lib/validation';
 	import { onMount } from 'svelte';
 	import { protocolLoad } from '$lib/protocols';
 	import { PasswordPolicy } from '$lib/proto/password_policy/password_policy';

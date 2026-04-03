@@ -9,7 +9,9 @@ import type { UserProfile } from '$lib/proto/user_profile/user_profile';
 export const prerender = false;
 export const ssr = false;
 
-export async function load({ url }): Promise<{ currentUser: CurrentUser; userProfile: UserProfile }> {
+export async function load({
+	url
+}): Promise<{ currentUser: CurrentUser; userProfile: UserProfile }> {
 	await configureAuth();
 	if (get(currentUser)) {
 		const userProfile = await loadUserProfile();

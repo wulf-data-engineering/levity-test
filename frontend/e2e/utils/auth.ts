@@ -1,9 +1,9 @@
 import { expect, Page } from '@playwright/test';
 
 export async function signUpAndSignIn(page: Page) {
-  const testUserEmail = 'test@wulf.technology';
-  const email = testUserEmail.replace('@', `+e2e-${new Date().getTime()}-userProfile@`);
-  const password = 'Password123!';
+	const testUserEmail = 'test@wulf.technology';
+	const email = testUserEmail.replace('@', `+e2e-${new Date().getTime()}-userProfile@`);
+	const password = 'Password123!';
 
 	await page.goto('/');
 	await page.locator('#sign-up-link').click();
