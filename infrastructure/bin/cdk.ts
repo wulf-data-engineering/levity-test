@@ -39,5 +39,5 @@ if (deploymentConfig.domainName) {
 // Deploys the actual application stack.
 new AppStack(app, 'AppStack', {
   env,
-  deploymentConfig,
+  deploymentConfig
 });

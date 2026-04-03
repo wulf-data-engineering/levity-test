@@ -45,7 +45,7 @@ _staging_ is configured to destroy resources after stack deletion.
 
 - **FoundationStack**: Contains stateful resources (Hosted Zone, SES). Requires `domain`, `githubRepo`, and `environment`. When `environment=production`, the `stagingNameServers` context variable is **mandatory** to delegate the `staging` subdomain to the staging account.
 - **CertificateStack**: Contains the ACM Certificate deployed to us-east-1. Requires `domain` and `environment`.
-- **AppStack**: Contains the application (Backend, Frontend). Requires `domain`, `hostedZone`, `certificateArn` and `environment`, typically by CI/CD.
++- **AppStack**: Contains the application (Backend, Frontend). Requires `domain`, `hostedZone`, `certificateArn` and `environment`, typically by CI/CD.
 
 ### sandbox (`mode=sandbox`, default)
 
@@ -177,7 +177,7 @@ npx cdk deploy AppStack \
   -c environment=<staging|production> \
   -c domain=<domain> \
   -c certificateArn=<arn> \
-  -c backendPath=<path> \
+  -c backendPath=<path>
   -c frontendPath=<path>
 ```
 

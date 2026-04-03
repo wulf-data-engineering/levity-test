@@ -46,18 +46,25 @@ Ask the user to configure SSO logins and profiles for both via CLI:
     aws configure sso --profile levity-test-production
     ```
 
-Make sure the developer has logged into AWS with both profiles:
+Ask the user to log into both accounts:
+
+    ```bash
+    aws sso login --profile levity-test-staging
+    aws sso login --profile levity-test-production
+    ```
+
+Then check the log in status and capture the account ids for both environments:
 
    ```bash
    aws sts get-caller-identity --profile levity-test-staging
    aws sts get-caller-identity --profile levity-test-production
    ```
 
-**Action:** Capture the account ids for both environents.
-
 ## Bootstrap both accounts
 
-Bootstrap cdk for both environments:
+Explain to the user, that AWS accounts need to be bootstrapped for CDK.
+
+Then, bootstrap cdk for both environments:
 
    ```bash
    cd infrastructure
@@ -69,9 +76,9 @@ Bootstrap cdk for both environments:
 
 ## Deploy foundation stack (Cross-Account Setup)
 
-Deploy the `FoundationStack` to set up the base infrastructure for both accounts.
+Explain to the user, that the foundation stack has to be deployed first.
 
-**Important:** Follow exactly the following referenced rules:
+**Important:** Then, deploy the `FoundationStack` by following exactly these referenced rules:
 
 @../rules/foundation-stack.md
 
@@ -84,41 +91,39 @@ Guide the user to configure their DNS registrar.
 1.  **Notify the User**: Provide the 4 **production** NS records from the second deployment.
 2.  Ask them to configure these 4 Name Servers as the Custom DNS for the root domain `levity-test.wulf.technology` at their registrar.
 3.  Explain that they do *not* configure the staging NS records at the registrar; the production AWS account is now delegating traffic to them automatically.
-4.  Wait for propagation (usually minutes).
-
-Verify using:
+4.  Wait for propagation (usually minutes):
 
    ```bash
     dig +short NS staging.levity-test.wulf.technology
-    dig +short NS levity-test.wulf.technology
+    dig +short NS levity-test.levity-test.wulf.technology
    ```
 
 ## Deploy certificate stack
 
-Now the certificate stack can be deployed:
+Explain to the user, that certificates for the domains are required in us-east-1 for CloudFront.
 
-   ```bash
-   npx cdk deploy CertificateStack \
+Then, deploy the certificate stack:
+
+```bash
+npx cdk deploy CertificateStack \
      --profile levity-test-staging \
      --require-approval never \
      -c environment=staging \
      -c domain=staging.levity-test.wulf.technology \
-   ```
 
 
-   ```bash
-   npx cdk deploy CertificateStack \
+npx cdk deploy CertificateStack \
      --profile levity-test-production \
      --require-approval never \
      -c environment=production \
      -c domain=levity-test.wulf.technology \
-   ```
+```
 
-**Action:** Capture the `CertificateArnOutput` from both the staging and production deployment outputs.
++**Action:** Capture the `CertificateArnOutput` from both the staging and production deployment outputs.
 
-## Configure GitHub Secrets and Variables
+## Configure GitHub Variables
 
-Offer to store them in the GitHub repository using the `gh` CLI.
+Offer to the user to store variables in the GitHub repository using the `gh` CLI.
 
 1.  Check if `gh` is installed (`gh --version`).
 2.  If installed, ask the user if they want you to set them automatically.
@@ -128,15 +133,13 @@ Offer to store them in the GitHub repository using the `gh` CLI.
     # Login check
     gh auth status || gh auth login
 
-    # Set Variables (Non-sensitive)
+    # Set Variables
     gh variable set DOMAIN_STAGING -b"staging.levity-test.wulf.technology" -R <org/repo>
     gh variable set DOMAIN_PRODUCTION -b"levity-test.wulf.technology" -R <org/repo>
-    gh variable set CERTIFICATE_ARN_STAGING -b"<CertificateArnStaging>" -R <org/repo>
-    gh variable set CERTIFICATE_ARN_PRODUCTION -b"<CertificateArnProduction>" -R <org/repo>
-
-    # Set Secrets (Sensitive)
-    gh secret set AWS_ROLE_ARN_STAGING -b"<GitHubRoleArn>" -R <org/repo>
-    gh secret set AWS_ROLE_ARN_PRODUCTION -b"<GitHubRoleArn>" -R <org/repo>
++    gh variable set CERTIFICATE_ARN_STAGING -b"<CertificateArnStaging>" -R <org/repo>
++    gh variable set CERTIFICATE_ARN_PRODUCTION -b"<CertificateArnProduction>" -R <org/repo>
+    gh variable set AWS_ROLE_ARN_STAGING -b"<GitHubRoleArn>" -R <org/repo>
+    gh variable set AWS_ROLE_ARN_PRODUCTION -b"<GitHubRoleArn>" -R <org/repo>
     ```
 
 **Important:** Use exactly those names.
@@ -144,6 +147,8 @@ Other names can be added if they are required for the application but follow the
 
 
 ## Verify
+
+Explain to the user, that you will verify the domain and email configuration.
 
 1. Check the SES verification status:
 

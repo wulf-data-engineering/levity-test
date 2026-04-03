@@ -1,18 +1,5 @@
 {
-  "hosted-zone:account=190059852932:domainName=staging.levity-test.wulf.technology:region=us-east-1": {
-    "Id": "/hostedzone/Z037775434VS949HWKPFA",
-    "Name": "staging.levity-test.wulf.technology."
-  },
-  "hosted-zone:account=190059852932:domainName=staging.levity-test.wulf.technology:region=eu-central-1": {
-    "Id": "/hostedzone/Z037775434VS949HWKPFA",
-    "Name": "staging.levity-test.wulf.technology."
-  },
-  "hosted-zone:account=686112930087:domainName=levity-test.wulf.technology:region=us-east-1": {
-    "Id": "/hostedzone/Z09586371V87W1QT92JKP",
-    "Name": "levity-test.wulf.technology."
-  },
-  "hosted-zone:account=686112930087:domainName=levity-test.wulf.technology:region=eu-central-1": {
-    "Id": "/hostedzone/Z09586371V87W1QT92JKP",
-    "Name": "levity-test.wulf.technology."
-  }
+  "acknowledged-issue-numbers": [
+    34892
+  ]
 }

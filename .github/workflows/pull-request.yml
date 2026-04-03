@@ -7,6 +7,16 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
+  check-dependabot:
+    name: Check Dependabot
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Validate dependabot.yml
+        uses: marocchino/validate-dependabot@v3
+        with:
+          path: .github/dependabot.yml
+
   check-protocols:
     name: Check Protocols
     runs-on: ubuntu-latest
@@ -14,7 +24,7 @@ jobs:
       - uses: actions/checkout@v6
       - uses: bufbuild/buf-setup-action@v1
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+          github_token: ${{ github.token }}
       - name: Lint protocols
         uses: bufbuild/buf-lint-action@v1
         with:
@@ -31,7 +41,7 @@ jobs:
       run:
         working-directory: backend
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v5
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: pull-request
@@ -43,12 +53,11 @@ jobs:
       - name: Check formatting
         id: format
         run: cargo fmt -- --check
-      - name: Run checks
-        id: check
-        run: cargo check
+        continue-on-error: true
       - name: Run clippy
         id: clippy
         run: cargo clippy
+        continue-on-error: true
       - name: Install cargo-nextest
         uses: taiki-e/install-action@v2
         with:
@@ -56,16 +65,16 @@ jobs:
       - name: Run unit tests
         id: tests
         run: cargo nextest run
+        continue-on-error: true
       - name: Aggregate results and fail if any failed
         if: always() # ensure this runs even if earlier steps failed
         run: |
           echo "format outcome:   ${{ steps.format.outcome }}"
-          echo "check outcome:  ${{ steps.check.outcome }}"
           echo "clippy outcome:  ${{ steps.clippy.outcome }}"
           echo "tests outcome:  ${{ steps.tests.outcome }}"
 
           # If any step outcome is 'failure' then fail the job
-          for s in "${{ steps.format.outcome }}" "${{ steps.check.outcome }}" "${{ steps.clippy.outcome }}" "${{ steps.tests.outcome }}"; do
+          for s in "${{ steps.format.outcome }}" "${{ steps.clippy.outcome }}" "${{ steps.tests.outcome }}"; do
             if [ "$s" = "failure" ]; then
               echo "One or more checks failed."
               exit 1
@@ -80,29 +89,29 @@ jobs:
       run:
         working-directory: infrastructure
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v5
       - name: Setup node
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v3
         with:
           node-version: "20"
       - name: Install dependencies
         run: npm ci
       - name: Run tests
         run: npm test
-  frontend:
+  test-frontend:
     name: Test Frontend
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: frontend
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v5
       - name: Setup node
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v3
         with:
           node-version: "20"
       - name: Restore cache
-        uses: actions/cache@v5
+        uses: actions/cache@v3
         with:
           path: |
             ~/.npm
@@ -148,3 +157,119 @@ jobs:
           done
 
           echo "All checks passed."
+
+  test-e2e:
+    name: Test end-to-end
+    runs-on: ubuntu-latest
+    needs:
+      - test-backend
+      - test-frontend
+      - test-infrastructure
+    env:
+      CI: "true"
+    steps:
+      - uses: actions/checkout@v5
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: pull-request
+          workspaces: ./backend -> target
+      - name: Install Rust
+        run: rustup show
+      - name: Install latest cargo-lambda binary
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          TAG=$(curl -H "Authorization: Bearer $GITHUB_TOKEN" -s https://api.github.com/repos/cargo-lambda/cargo-lambda/releases/latest | jq -r .tag_name)
+          echo "Latest tag is $TAG"
+          ARCH=$(uname -m)
+          if [ "$ARCH" = "x86_64" ]; then
+            ASSET="cargo-lambda-$TAG.x86_64-unknown-linux-musl.tar.gz"
+          elif [ "$ARCH" = "aarch64" ] || [ "$ARCH" = "arm64" ]; then
+            ASSET="cargo-lambda-$TAG.aarch64-unknown-linux-musl.tar.gz"
+          else
+            echo "Unsupported architecture: $ARCH"
+            exit 1
+          fi
+          echo "Downloading $ASSET"
+          curl -fL -o /tmp/cargo-lambda.tar.gz \
+            "https://github.com/cargo-lambda/cargo-lambda/releases/download/$TAG/$ASSET"
+          sudo tar -xzf /tmp/cargo-lambda.tar.gz -C /usr/local/bin
+      - name: Run docker compose
+        uses: hoverkraft-tech/compose-action@v2.5.0
+        with:
+          github-token: ${{ github.token }}
+          compose-file: docker-compose.yml
+          services-log-level: info
+      - name: Setup node
+        uses: actions/setup-node@v3
+        with:
+          node-version: "20"
+      - name: Restore cache
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.npm
+            frontend/node_modules/
+          key: node-modules-cache-${{ hashFiles('frontend/package-lock.json') }}
+          restore-keys: node-modules-cache-
+      - name: Deploy CDK to LocalStack
+        working-directory: infrastructure/
+        run: |
+          npm ci
+          npx cdk --version
+          # Wait up to 60 seconds for cloudformation in localstack to be available
+          timeout 60s bash -c 'until curl -s http://localhost:4566/_localstack/health | grep "\"cloudformation\": \"available\""; do echo "waiting for cloudformation..."; sleep 2; done'
+          echo "LocalStack CloudFormation is ready."
+          npm run cdklocal:bootstrap
+          npm run cdklocal:deploy
+      - name: Start cargo-lambda watch in background
+        working-directory: backend/
+        run: |
+          cargo build
+          cargo lambda watch &>/tmp/cargo-lambda-watch.log &
+          CARGO_PID=$!
+          echo "CARGO_PID=$CARGO_PID" >> $GITHUB_ENV
+          echo "Started cargo lambda watch running on pid $CARGO_PID"
+      - name: Start npm run dev in background
+        working-directory: frontend/
+        run: |
+          npm ci
+          npm run gen:proto
+          npm run dev &>/tmp/npm-dev.log &
+          NPM_PID=$!
+          echo "NPM_PID=$NPM_PID" >> $GITHUB_ENV
+          echo "Started npm run dev running on pid $NPM_PID"
+          npx wait-on http://localhost:5173 --timeout 60000
+      - name: Run Playwright tests
+        working-directory: frontend/
+        run: |
+          docker run --rm \
+            --network host \
+            -v $(pwd):/work \
+            -w /work \
+            -e CI=true \
+            mcr.microsoft.com/playwright:v1.59.1-noble \
+            npx playwright test
+      - name: Upload Playwright test results
+        id: upload-playwright
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-test-results
+          path: |
+            frontend/test-results/
+            frontend/playwright-report/
+            frontend/playwright-report/videos/
+            frontend/playwright-report/screenshots/
+            /tmp/cargo-lambda-watch.log
+          include-hidden-files: true
+      - name: Playwright report
+        if: failure()
+        run: echo "Playwright report is at ${{ steps.upload-playwright.outputs.artifact-url }}"
+      - name: Stop cargo lambda watch and npm run dev
+        if: always()
+        run: |
+          echo "Stopping cargo lambda watch at $CARGO_PID"
+          kill $CARGO_PID
+          echo "Stopping npm run dev at $NPM_PID"
+          kill $NPM_PID
