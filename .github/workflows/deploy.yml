@@ -10,6 +10,9 @@ on:
       domain:
         required: true
         type: string
+      certificateArn:
+        required: true
+        type: string
     secrets:
       awsRoleArn:
         required: true
@@ -59,6 +62,7 @@ jobs:
             -c mode=environment \
             -c environment=${{ inputs.environment }} \
             -c domain=${{ inputs.domain }} \
+            -c certificateArn=${{ inputs.certificateArn }} \
             -c githubRepo=${{ github.repository }} \
             -c backendPath=../downloaded-backend \
             -c frontendPath=../downloaded-frontend

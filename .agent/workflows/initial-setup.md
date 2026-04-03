@@ -114,6 +114,8 @@ Now the certificate stack can be deployed:
      -c domain=levity-test.wulf.technology \
    ```
 
+**Action:** Capture the `CertificateArnOutput` from both the staging and production deployment outputs.
+
 ## Configure GitHub Secrets and Variables
 
 Offer to store them in the GitHub repository using the `gh` CLI.
@@ -129,6 +131,8 @@ Offer to store them in the GitHub repository using the `gh` CLI.
     # Set Variables (Non-sensitive)
     gh variable set DOMAIN_STAGING -b"staging.levity-test.wulf.technology" -R <org/repo>
     gh variable set DOMAIN_PRODUCTION -b"levity-test.wulf.technology" -R <org/repo>
+    gh variable set CERTIFICATE_ARN_STAGING -b"<CertificateArnStaging>" -R <org/repo>
+    gh variable set CERTIFICATE_ARN_PRODUCTION -b"<CertificateArnProduction>" -R <org/repo>
 
     # Set Secrets (Sensitive)
     gh secret set AWS_ROLE_ARN_STAGING -b"<GitHubRoleArn>" -R <org/repo>

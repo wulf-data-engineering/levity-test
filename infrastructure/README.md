@@ -23,6 +23,7 @@ Configuration is passed via CDK context variables (`-c key=value`).
 | `domain`             | The domain name (e.g. `staging.example.com`)            | all (`environment` mode) |
 | `githubRepo`         | GitHub repository (e.g. `org/repo`) for OIDC            | `FoundationStack`        |
 | `stagingNameServers` | Name servers for staging delegation (`production` only) | `FoundationStack`        |
+| `certificateArn`     | The ARN of the ACM certificate                          | `AppStack`               |
 | `backendPath`        | Path to pre-compiled backend                            | `AppStack`               |
 | `frontendPath`       | Path to pre-compiled frontend                           | `AppStack`               |
 | `build`              | Build application code locally (default: false)         | `AppStack`               |
@@ -44,7 +45,7 @@ _staging_ is configured to destroy resources after stack deletion.
 
 - **FoundationStack**: Contains stateful resources (Hosted Zone, SES). Requires `domain`, `githubRepo`, and `environment`. When `environment=production`, the `stagingNameServers` context variable is **mandatory** to delegate the `staging` subdomain to the staging account.
 - **CertificateStack**: Contains the ACM Certificate deployed to us-east-1. Requires `domain` and `environment`.
-- **AppStack**: Contains the application (Backend, Frontend). Requires `domain`, `hostedZone`, and `environment`, typically by CI/CD.
+- **AppStack**: Contains the application (Backend, Frontend). Requires `domain`, `hostedZone`, `certificateArn` and `environment`, typically by CI/CD.
 
 ### sandbox (`mode=sandbox`, default)
 
@@ -175,7 +176,8 @@ npx cdk deploy AppStack \
   --profile <profile> \
   -c environment=<staging|production> \
   -c domain=<domain> \
-  -c backendPath=<path>
+  -c certificateArn=<arn> \
+  -c backendPath=<path> \
   -c frontendPath=<path>
 ```
 

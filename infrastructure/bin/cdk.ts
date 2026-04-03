@@ -24,27 +24,20 @@ if (githubRepo && deploymentConfig.domainName) {
   });
 }
 
-let certificateArn: string | undefined = undefined;
-
 // Create a validated certificate for the domain in us-east-1 (required for CloudFront).
 // Deploying the certificate stack does not make sense without a domain name.
 if (deploymentConfig.domainName) {
-  const certStack = new CertificateStack(app, 'CertificateStack', {
+  new CertificateStack(app, 'CertificateStack', {
     env: {
       account: env.account,
       region: 'us-east-1', // CloudFront strictly enforces ACM certificates to be in us-east-1
     },
-    crossRegionReferences: true,
     domainName: deploymentConfig.domainName!,
   });
-  // the certificate arn is passed to the app stack as cross region reference
-  certificateArn = certStack.certificateArn;
 }
 
 // Deploys the actual application stack.
 new AppStack(app, 'AppStack', {
   env,
-  crossRegionReferences: true,
   deploymentConfig,
-  certificateArn,
 });

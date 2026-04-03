@@ -7,7 +7,6 @@ import * as route53 from 'aws-cdk-lib/aws-route53';
 
 export interface AppStackProps extends cdk.StackProps {
   deploymentConfig: DeploymentConfig;
-  certificateArn?: string;
 }
 
 export class AppStack extends cdk.Stack {
@@ -37,7 +36,7 @@ export class AppStack extends cdk.Stack {
         userPool: backend.userPool,
         userPoolClient: backend.userPoolClient,
         hostedZone,
-        certificateArn: props.certificateArn,
+        certificateArn: this.node.tryGetContext('certificateArn'),
       });
     }
   }
