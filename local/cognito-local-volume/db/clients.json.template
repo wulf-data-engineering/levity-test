@@ -1,0 +1,39 @@
+{
+  "Clients": {
+    "local_userPoolClient": {
+      "AccessTokenValidity": 24,
+      "ClientId": "local_userPoolClient",
+      "ClientName": "local_userPoolClient",
+      "CreationDate": "2025-09-25T16:08:26.257Z",
+      "ExplicitAuthFlows": [
+        "ALLOW_REFRESH_TOKEN_AUTH",
+        "ALLOW_USER_SRP_AUTH",
+        "ALLOW_USER_PASSWORD_AUTH"
+      ],
+      "IdTokenValidity": 24,
+      "LastModifiedDate": "2025-09-25T16:08:26.257Z",
+      "PreventUserExistenceErrors": "ENABLED",
+      "ReadAttributes": [
+        "locale",
+        "email"
+      ],
+      "RefreshTokenValidity": 60,
+      "SupportedIdentityProviders": [
+        "COGNITO",
+        "Facebook",
+        "Google",
+        "LoginWithAmazon"
+      ],
+      "TokenValidityUnits": {
+        "AccessToken": "hours",
+        "IdToken": "minutes",
+        "RefreshToken": "days"
+      },
+      "UserPoolId": "local_userPool",
+      "WriteAttributes": [
+        "locale",
+        "email"
+      ]
+    }
+  }
+}
