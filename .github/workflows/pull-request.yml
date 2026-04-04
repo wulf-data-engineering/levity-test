@@ -46,8 +46,6 @@ jobs:
         with:
           shared-key: pull-request
           workspaces: ./backend -> target
-      - name: Install Rust
-        run: rustup show # picks the version from rust-toolchain.toml
       - name: Install Protoc
         uses: arduino/setup-protoc@v3
       - name: Check formatting
@@ -93,7 +91,7 @@ jobs:
       - name: Setup node
         uses: actions/setup-node@v6
         with:
-          node-version: "20"
+          node-version: "24"
       - name: Install dependencies
         run: npm ci
       - name: Run tests
@@ -109,7 +107,7 @@ jobs:
       - name: Setup node
         uses: actions/setup-node@v6
         with:
-          node-version: "20"
+          node-version: "24"
       - name: Restore cache
         uses: actions/cache@v5
         with:
@@ -173,27 +171,14 @@ jobs:
         with:
           shared-key: pull-request
           workspaces: ./backend -> target
-      - name: Install Rust
-        run: rustup show
-      - name: Install latest cargo-lambda binary
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-        run: |
-          TAG=$(curl -H "Authorization: Bearer $GITHUB_TOKEN" -s https://api.github.com/repos/cargo-lambda/cargo-lambda/releases/latest | jq -r .tag_name)
-          echo "Latest tag is $TAG"
-          ARCH=$(uname -m)
-          if [ "$ARCH" = "x86_64" ]; then
-            ASSET="cargo-lambda-$TAG.x86_64-unknown-linux-musl.tar.gz"
-          elif [ "$ARCH" = "aarch64" ] || [ "$ARCH" = "arm64" ]; then
-            ASSET="cargo-lambda-$TAG.aarch64-unknown-linux-musl.tar.gz"
-          else
-            echo "Unsupported architecture: $ARCH"
-            exit 1
-          fi
-          echo "Downloading $ASSET"
-          curl -fL -o /tmp/cargo-lambda.tar.gz \
-            "https://github.com/cargo-lambda/cargo-lambda/releases/download/$TAG/$ASSET"
-          sudo tar -xzf /tmp/cargo-lambda.tar.gz -C /usr/local/bin
+      - name: Install Protoc
+        uses: arduino/setup-protoc@v3
+        with:
+          repo-token: ${{ github.token }}
+      - name: Install cargo-lambda
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-lambda
       - name: Run docker compose
         uses: hoverkraft-tech/compose-action@v2.5.0
         with:
@@ -203,7 +188,7 @@ jobs:
       - name: Setup node
         uses: actions/setup-node@v6
         with:
-          node-version: "20"
+          node-version: "24"
       - name: Restore cache
         uses: actions/cache@v5
         with:
