@@ -23,13 +23,14 @@ Make sure the developer has logged into AWS with both profiles:
 2. Run the deployment against the staging profile:
 
    ```bash
+   git remote get-url origin
    cd infrastructure
    npx cdk deploy FoundationStack \
      --profile levity-test-staging \
      --require-approval never \
      -c environment=staging \
      -c domain=staging.levity-test.wulf.technology \
-     -c githubRepo=<org/repo> # Get from git remote -v
+     -c githubRepo=<org/repo> # Get from git remote get-url origin
      -c ... # other application dependent values
    ```
 
@@ -48,7 +49,7 @@ Make sure the developer has logged into AWS with both profiles:
      --require-approval never \
      -c environment=production \
      -c domain=levity-test.wulf.technology \
-     -c githubRepo=<org/repo> \ # Get from git remote -v
+     -c githubRepo=<org/repo> \
      -c stagingNameServers="ns-XXXX.awsdns-XX.org, ns-YYYY.awsdns-YY.co.uk, ..." # Use comma-separated list from Step 1
      -c ... # other application dependent values
    ```
@@ -67,7 +68,7 @@ Check if the hosted zone is subject to replacement. **Important:** If that is th
      -c mode=environment \
      -c environment=production \
      -c domain=levity-test.wulf.technology \
-     -c githubRepo=<org/repo> \ # Get from git remote -v
+     -c githubRepo=<org/repo> \
      -c stagingNameServers="ns-XXXX.awsdns-XX.org, ns-YYYY.awsdns-YY.co.uk, ..." # Use comma-separated list from Step 1
      -c ... # other application dependent values
    ```

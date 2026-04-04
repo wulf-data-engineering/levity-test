@@ -71,5 +71,8 @@ alias docker-compose="docker compose"
 
 Summarize artifact in final output.
 If there are missing dependencies ask to proceed with implementation plan.
-Clarify what you d at "proceed" and what dev has to do.
+Clarify what you do at "proceed" and what dev has to do.
 If there are none there is no need to proceed: Workflow done.
+
+If there is no github repository, this is a new project.
+Suggest to continue with @initial-setup.md workflow.
