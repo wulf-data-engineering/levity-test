@@ -46,6 +46,7 @@ jobs:
           done
         env:
           CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
+          CARGO_TERM_COLOR: always
       - name: Upload Backend Artifacts
         uses: actions/upload-artifact@v7
         with:
@@ -71,7 +72,7 @@ jobs:
         if: steps.cache.outputs.cache-hit != 'true'
         uses: actions/setup-node@v6
         with:
-          node-version: "20"
+          node-version: "24"
           cache: "npm"
           cache-dependency-path: frontend/package-lock.json
       - name: Install Protoc
@@ -96,8 +97,8 @@ jobs:
     with:
       environment: staging
       domain: ${{ vars.DOMAIN_STAGING }}
-      certificateArn: ${{ vars.CERTIFICATE_ARN_STAGING }}
       awsRoleArn: ${{ vars.AWS_ROLE_ARN_STAGING }}
+      certificateArn: ${{ vars.CERTIFICATE_ARN_STAGING }}
 
   deploy-production:
     needs: [deploy-staging]
@@ -105,5 +106,5 @@ jobs:
     with:
       environment: production
       domain: ${{ vars.DOMAIN_PRODUCTION }}
-      certificateArn: ${{ vars.CERTIFICATE_ARN_PRODUCTION }}
       awsRoleArn: ${{ vars.AWS_ROLE_ARN_PRODUCTION }}
+      certificateArn: ${{ vars.CERTIFICATE_ARN_PRODUCTION }}

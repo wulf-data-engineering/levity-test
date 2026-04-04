@@ -1,7 +1,7 @@
 services:
   localstack:
     image: localstack/localstack:4.14.0
-    container_name: localstack-main
+    container_name: levity-test-localstack
     ports:
       - "4566:4566"
       - "4571:4571"
@@ -17,7 +17,7 @@ services:
       - "/var/run/docker.sock:/var/run/docker.sock" # required for lambdas
   cognito-local-init: # Makes sure the cognito-local container has the necessary files
     image: alpine
-    container_name: cognito-local-init
+    container_name: levity-test-cognito-local-init
     volumes:
       - "./local/cognito-local-volume:/app/.cognito"
     command: >
@@ -27,7 +27,7 @@ services:
         "
   cognito-local:
     image: jagregory/cognito-local
-    container_name: cognito-local
+    container_name: levity-test-cognito-local
     depends_on:
       cognito-local-init: # Started after the init container has prepared an initial database
         condition: service_completed_successfully

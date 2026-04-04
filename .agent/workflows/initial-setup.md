@@ -8,17 +8,21 @@ Guide the user through the steps you as an agent together with the user have to 
 
 // turbo-all
 
+## npm dependencies
+
+Run `npm install` in `frontend/` and `infrastructure/`.
+
 ## Formatting
 
-Suggest to run formatter in backend and frontend because value substitution in cookiecutter not necessarily produces formatted code.
-
+Suggest to run formatter in backend, frontend and infrastructure because this project was created from a template and value substitution not necessarily produces formatted code.
+You can do this on the main branch. If there are changes, suggest to checkout branch `initial-setup`.
 
 ## Connect to GitHub Repository
 
 Check if the local project is connected to a GitHub repository:
 
 ```bash
-git remote -v
+git remote get-url origin
 ```
 
 If not:
@@ -91,14 +95,21 @@ Guide the user to configure their DNS registrar.
 1.  **Notify the User**: Provide the 4 **production** NS records from the second deployment.
 2.  Ask them to configure these 4 Name Servers as the Custom DNS for the root domain `levity-test.wulf.technology` at their registrar.
 3.  Explain that they do *not* configure the staging NS records at the registrar; the production AWS account is now delegating traffic to them automatically.
-4.  Wait for propagation (usually minutes):
+
+## Configure GitHub repo
+
+While waiting for the DNS propagation, suggest to configure the GitHub repository:
+
+Follow the steps of the @configure-github-repo.md workflow.
+
+## Deploy certificate stack
+
+Verify that the DNS has been propagated:
 
    ```bash
     dig +short NS staging.levity-test.wulf.technology
     dig +short NS levity-test.levity-test.wulf.technology
    ```
-
-## Deploy certificate stack
 
 Explain to the user, that certificates for the domains are required in us-east-1 for CloudFront.
 

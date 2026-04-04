@@ -26,7 +26,7 @@ docker compose up
 If `docker compose down` fails to clean up or you see container conflicts, use:
 
 ```bash
-docker rm -f cognito-local localstack-main
+docker rm -f levity-test-localstack levity-test-cognito-local-init levity-test-cognito-local
 ```
 
 If you had to run `docker rm` you definitely need to bootstrap cdk.
