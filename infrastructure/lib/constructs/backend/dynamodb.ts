@@ -5,6 +5,8 @@ import { Construct } from 'constructs';
 export interface VersionedTableProps {
   tableName: string;
   partitionKey?: string;
+  sortKey?: string;
+  timeToLiveAttribute?: string;
   removalPolicy?: RemovalPolicy;
 }
 
@@ -16,6 +18,11 @@ export class VersionedTable extends Table {
         name: props.partitionKey || 'pk',
         type: AttributeType.STRING,
       },
+      sortKey: props.sortKey ? {
+        name: props.sortKey,
+        type: AttributeType.STRING,
+      } : undefined,
+      timeToLiveAttribute: props.timeToLiveAttribute,
       billingMode: BillingMode.PAY_PER_REQUEST,
       pointInTimeRecoverySpecification: {
         pointInTimeRecoveryEnabled: true,

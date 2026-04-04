@@ -1,4 +1,5 @@
 use aws_config::{BehaviorVersion, ConfigLoader, Region, SdkConfig};
+use aws_sdk_ssm::Client as SsmClient;
 
 const DEFAULT_REGION: &str = "eu-central-1";
 
@@ -97,4 +98,22 @@ async fn load_aws_config_for_endpoint(endpoint: Option<String>) -> SdkConfig {
 #[cfg(any(debug_assertions, test))]
 pub async fn load_aws_config_for_mock(mock_server: &wiremock::MockServer) -> SdkConfig {
     load_aws_config_for_endpoint(Some(mock_server.uri())).await
+}
+
+/// Helper to pull strings from AWS Systems Manager Parameter Store
+pub async fn get_ssm_parameter(config: &SdkConfig, name: &str) -> anyhow::Result<String> {
+    let ssm_client = SsmClient::new(config);
+    let value = ssm_client
+        .get_parameter()
+        .name(name)
+        .send()
+        .await
+        .map_err(|e| anyhow::anyhow!("Failed to get SSM parameter '{}': {:?}", name, e))?
+        .parameter()
+        .ok_or_else(|| anyhow::anyhow!("SSM parameter '{}' not found in response", name))?
+        .value()
+        .ok_or_else(|| anyhow::anyhow!("SSM parameter '{}' has empty value", name))?
+        .to_string();
+
+    Ok(value)
 }

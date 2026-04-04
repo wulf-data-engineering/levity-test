@@ -11,6 +11,7 @@
     "cdk": "cdk",
     "cdklocal:bootstrap": "AWS_REGION=eu-central-1 AWS_DEFAULT_REGION=eu-central-1 AWS_ACCESS_KEY_ID=test AWS_SECRET_ACCESS_KEY=test AWS_ENDPOINT_URL=http://127.0.0.1:4566 AWS_ENDPOINT_URL_S3=http://127.0.0.1:4566 AWS_S3_FORCE_PATH_STYLE=true AWS_SDK_LOAD_CONFIG=1 cdk bootstrap aws://000000000000/eu-central-1 --cloudformation-execution-policies arn:aws:iam::aws:policy/AdministratorAccess",
     "cdklocal:deploy": "AWS_REGION=eu-central-1 AWS_DEFAULT_REGION=eu-central-1 AWS_ACCESS_KEY_ID=test AWS_SECRET_ACCESS_KEY=test AWS_ENDPOINT_URL=http://127.0.0.1:4566 AWS_ENDPOINT_URL_S3=http://127.0.0.1:4566 AWS_S3_FORCE_PATH_STYLE=true AWS_SDK_LOAD_CONFIG=1 cdk deploy --require-approval never",
+    "cdklocal:destroy": "AWS_REGION=eu-central-1 AWS_DEFAULT_REGION=eu-central-1 AWS_ACCESS_KEY_ID=test AWS_SECRET_ACCESS_KEY=test AWS_ENDPOINT_URL=http://127.0.0.1:4566 AWS_ENDPOINT_URL_S3=http://127.0.0.1:4566 AWS_S3_FORCE_PATH_STYLE=true AWS_SDK_LOAD_CONFIG=1 cdk destroy --force",
     "format": "prettier --write .",
     "check-format": "prettier --check ."
   },

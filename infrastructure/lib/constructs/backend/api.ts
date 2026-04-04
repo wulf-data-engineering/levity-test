@@ -10,6 +10,7 @@ interface ApiProps {
   deploymentConfig: DeploymentConfig;
   userPool: cognito.IUserPool;
   usersTable: dynamodb.ITable;
+  websocketConnectionsTable: dynamodb.ITable;
 }
 
 /**
@@ -66,6 +67,21 @@ export class Api extends Construct {
       },
     );
     props.usersTable.grantReadData(userProfileFunction);
+
+    const processFunction = backendLambdaApi(
+      this,
+      "ProcessFunction",
+      {
+        deploymentConfig: props.deploymentConfig,
+        apiRoot: this.apiRoot,
+        binaryName: "process",
+        environment: {
+          WEBSOCKET_CONNECTIONS_TABLE_NAME: props.websocketConnectionsTable.tableName,
+        },
+        authorizer,
+      }
+    );
+    props.websocketConnectionsTable.grantWriteData(processFunction);
 
     // Grant the lambda permission to describe the user pool
     props.userPool.grant(

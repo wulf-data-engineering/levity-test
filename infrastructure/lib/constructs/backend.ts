@@ -42,6 +42,15 @@ export class Backend extends Construct {
       projectionType: ProjectionType.ALL,
     });
 
+    const websocketConnectionsTable = new VersionedTable(this, 'WebsocketConnectionsTable', {
+      tableName: 'websocket-connections',
+      partitionKey: 'userId',
+      sortKey: 'topicId',
+      timeToLiveAttribute: 'ttl',
+      removalPolicy: deploymentConfig.removalPolicy,
+    });
+
+
     // Locally cognito-local and cargo lambda watch are used instead
     if (deploymentConfig.aws) {
       const identity = new Identity(this, 'Identity', {
@@ -57,7 +66,9 @@ export class Backend extends Construct {
         deploymentConfig,
         userPool: this.userPool,
         usersTable,
+        websocketConnectionsTable,
       });
+
       this.restApi = api.gateway;
     }
   }

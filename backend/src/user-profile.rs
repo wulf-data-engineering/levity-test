@@ -1,7 +1,7 @@
 use anyhow::{anyhow, Result};
 use aws_sdk_dynamodb::Client;
-use backend::{load_aws_config, write_response};
 use lambda_http::{run, service_fn, tracing, Body, Error, Request, Response};
+use backend::{load_aws_config, write_response, get_sub};
 use protocol_macro::protocols;
 
 #[protocols("user_profile")]
@@ -51,54 +51,8 @@ async fn function_handler(req: Request, state: AppState) -> Result<Response<Body
     write_response(&profile, &req)
 }
 
-#[cfg(not(any(debug_assertions, test)))]
-fn get_sub(req: &Request) -> Result<String, Error> {
-    use lambda_http::RequestExt;
-    let request_context = req.request_context();
-    request_context
-        .authorizer()
-        .and_then(|auth| {
-            auth.jwt
-                .as_ref()
-                .and_then(|jwt| jwt.claims.get("sub").cloned())
-        })
-        .ok_or_else(|| anyhow!("Missing sub in claims").into())
-}
 
-// Locally there is no API Gateway authorizer, need to parse the header
-#[cfg(any(debug_assertions, test))]
-fn get_sub(req: &Request) -> Result<String, Error> {
-    req.headers()
-        .get("Authorization")
-        .and_then(|h| h.to_str().ok())
-        .and_then(|h| h.strip_prefix("Bearer "))
-        .and_then(|token| {
-            let parts: Vec<&str> = token.split('.').collect();
-            if parts.len() == 3 {
-                use base64::{engine::general_purpose, Engine as _};
-                let payload = parts[1];
-                // Add padding if needed
-                let len = payload.len();
-                let padded = if !len.is_multiple_of(4) {
-                    let pad_len = 4 - (len % 4);
-                    format!("{}{}", payload, "=".repeat(pad_len))
-                } else {
-                    payload.to_string()
-                };
 
-                if let Ok(decoded) = general_purpose::URL_SAFE.decode(padded) {
-                    if let Ok(json) = serde_json::from_slice::<serde_json::Value>(&decoded) {
-                        return json
-                            .get("sub")
-                            .and_then(|s| s.as_str())
-                            .map(|s| s.to_string());
-                    }
-                }
-            }
-            None
-        })
-        .ok_or_else(|| anyhow!("Missing sub in claims").into())
-}
 
 #[cfg(any(debug_assertions, test))]
 fn get_table_name() -> String {
