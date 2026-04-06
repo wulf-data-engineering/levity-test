@@ -52,7 +52,7 @@
 		"@types/snappyjs": "^0.7.1",
 		"@vitest/browser": "^4.1.2",
 		"axe-playwright": "^2.2.2",
-		"bits-ui": "^2.16.5",
+		"bits-ui": "^2.17.2",
 		"clsx": "^2.1.1",
 		"eslint": "^10.2.0",
 		"eslint-config-prettier": "^10.1.8",
