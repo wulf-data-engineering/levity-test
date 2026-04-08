@@ -14,6 +14,7 @@ interface DeploymentProps {
   distribution: cloudfront.IDistribution;
   userPool?: cognito.IUserPool;
   userPoolClient?: cognito.IUserPoolClient;
+  webSocketUrl?: string;
   deploymentConfig: DeploymentConfig;
 }
 
@@ -27,6 +28,7 @@ export class FrontendDeployment extends Construct {
     const runtimeConfig = {
       userPoolId: props.userPool?.userPoolId,
       userPoolClientId: props.userPoolClient?.userPoolClientId,
+      webSocketUrl: props.webSocketUrl,
     };
 
     let assetSource: s3deploy.ISource;
