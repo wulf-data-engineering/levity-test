@@ -5,6 +5,7 @@ import type {Amplify} from 'aws-amplify';
 import type {GetCurrentUserOutput} from 'aws-amplify/auth';
 import type * as Auth from 'aws-amplify/auth';
 import {SignUpData} from '$lib/proto/sign_up_data/sign_up_data';
+import { loadConfig } from '$lib/config';
 
 export type Amplify = typeof Amplify;
 export type AuthApi = typeof Auth;
@@ -24,11 +25,7 @@ export const isLoadingUser = derived(currentUser, (u) => u === undefined);
 
 let configured = false;
 
-type Config = {
-    userPoolId: string;
-    userPoolClientId: string;
-    endpoint?: string;
-};
+
 
 /**
  * Configure Amplify Auth from /config.json (AWS) or environment variables (dev, defaults to local
@@ -38,20 +35,6 @@ type Config = {
  */
 export async function configureAuth() {
     if (configured) return;
-
-    async function loadConfig(): Promise<Config> {
-        if (dev) {
-            return {
-                userPoolId: import.meta.env.VITE_USER_POOL_ID || 'local_userPool',
-                userPoolClientId: import.meta.env.VITE_USER_POOL_CLIENT_ID || 'local_userPoolClient',
-                endpoint: import.meta.env.VITE_COGNITO_ENDPOINT || 'http://localhost:9229'
-            };
-        } else {
-            const response = await fetch('/config.json');
-            if (!response.ok) throw new Error(`Failed to load config: ${response.statusText}`);
-            return await response.json();
-        }
-    }
 
     const {userPoolId, userPoolClientId, endpoint} = await loadConfig();
 

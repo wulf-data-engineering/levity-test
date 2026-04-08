@@ -1,7 +1,7 @@
 use anyhow::{anyhow, Result};
 use aws_sdk_dynamodb::Client;
+use backend::{get_sub, load_aws_config, write_response};
 use lambda_http::{run, service_fn, tracing, Body, Error, Request, Response};
-use backend::{load_aws_config, write_response, get_sub};
 use protocol_macro::protocols;
 
 #[protocols("user_profile")]
@@ -24,17 +24,20 @@ async fn main() -> Result<(), Error> {
 
     let state = AppState { repo };
 
-    ensure_test_user_profile(&state).await?;
-
     run(service_fn(move |req| {
         let state = state.clone();
-        async move { function_handler(req, state).await }
+        async move { 
+            ensure_test_user_profile(&state).await?; // make sure test user exists locally
+            function_handler(req, state).await
+        }
     }))
     .await
 }
 
 async fn function_handler(req: Request, state: AppState) -> Result<Response<Body>, Error> {
     let sub = get_sub(&req)?;
+
+    tracing::info!("Reading user profile for sub: {}", sub);
 
     let user = state
         .repo
@@ -50,9 +53,6 @@ async fn function_handler(req: Request, state: AppState) -> Result<Response<Body
 
     write_response(&profile, &req)
 }
-
-
-
 
 #[cfg(any(debug_assertions, test))]
 fn get_table_name() -> String {

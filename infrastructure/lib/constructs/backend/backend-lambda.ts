@@ -152,9 +152,9 @@ function bundleRustCode(binName: string, profile: string): lambda.AssetCode {
             },
             command: [
                 'bash', '-c',
+                `ls /asset-output && ` +
                 `cd /asset-input/${relativeCratePath} && ` +
                 `cargo build --profile ${profile} --target ${target} --bin ${binName} && ` +
-                // Copy from the cached target directory:
                 `cp /var/cargo/target/${target}/${profile}/${binName} /asset-output/bootstrap && ` +
                 '[ -f /asset-output/bootstrap ] || { echo "❌ Binary not found in output"; exit 1; } && ' +
                 'chmod -R 777 /var/cargo/target /var/cargo/registry || true'
