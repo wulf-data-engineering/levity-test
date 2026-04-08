@@ -4,3 +4,4 @@ pub mod dynamodb;
 pub mod http;
 pub mod protocols;
 pub mod users;
+pub mod websockets;

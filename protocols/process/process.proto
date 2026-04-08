@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package process;
+
+message CreateProcess {
+  string input = 1;
+}
+
+message ProcessRequest {
+  CreateProcess create_process = 1;
+}
+
+message ProcessResponse {
+  string topic = 1;
+}

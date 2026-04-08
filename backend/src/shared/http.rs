@@ -31,7 +31,11 @@ pub fn get_sub(req: &Request) -> Result<String, Error> {
     let request_context = req.request_context();
     request_context
         .authorizer()
-        .and_then(|auth| { auth.claims.get("sub").cloned() })
+        .and_then(|auth| {
+            auth.jwt
+                .as_ref()
+                .and_then(|jwt| jwt.claims.get("sub").cloned())
+        })
         .ok_or_else(|| anyhow!("Missing sub in claims").into())
 }
 

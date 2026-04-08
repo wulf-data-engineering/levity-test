@@ -10,6 +10,7 @@ import * as route53 from "aws-cdk-lib/aws-route53";
 interface FrontendProps {
     config: DeploymentConfig;
     backendApi?: apigateway.RestApi; // optionally forwards /api to backend API
+    webSocketUrl?: string; // optionally provides WebSocket URL to frontend
     userPool?: cognito.IUserPool
     userPoolClient?: cognito.IUserPoolClient
     hostedZone?: route53.IHostedZone
@@ -39,6 +40,7 @@ export class Frontend extends Construct {
             distribution: distribution.distribution,
             userPool: props.userPool,
             userPoolClient: props.userPoolClient,
+            webSocketUrl: props.webSocketUrl,
             deploymentConfig
         });
     }
