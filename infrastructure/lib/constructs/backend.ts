@@ -1,13 +1,17 @@
-import { Construct } from 'constructs';
+import * as cdk from 'aws-cdk-lib';
 import * as apigateway from 'aws-cdk-lib/aws-apigateway';
 import * as cognito from 'aws-cdk-lib/aws-cognito';
-import { Api } from './backend/api';
-import { Identity } from './backend/identity';
-import { DeploymentConfig } from '../config';
-import * as route53 from 'aws-cdk-lib/aws-route53';
-import * as ses from 'aws-cdk-lib/aws-ses';
-import { VersionedTable } from './backend/dynamodb';
 import { AttributeType, ProjectionType } from 'aws-cdk-lib/aws-dynamodb';
+import * as route53 from 'aws-cdk-lib/aws-route53';
+import * as sqs from 'aws-cdk-lib/aws-sqs';
+import * as ssm from 'aws-cdk-lib/aws-ssm';
+import { Construct } from 'constructs';
+import { DeploymentConfig } from '../config';
+import { Api } from './backend/api';
+import { VersionedTable } from './backend/dynamodb';
+import { Identity } from './backend/identity';
+import { backendLambda } from './backend/backend-lambda';
+import { SqsEventSource } from 'aws-cdk-lib/aws-lambda-event-sources';
 
 export interface BackendProps {
   config: DeploymentConfig;
@@ -23,6 +27,7 @@ export class Backend extends Construct {
   public readonly restApi?: apigateway.RestApi;
   public readonly userPool?: cognito.UserPool;
   public readonly userPoolClient?: cognito.UserPoolClient;
+  public readonly webSocketUrl?: string;
 
   constructor(scope: Construct, id: string, props: BackendProps) {
     super(scope, id);
@@ -50,6 +55,42 @@ export class Backend extends Construct {
       removalPolicy: deploymentConfig.removalPolicy,
     });
 
+    websocketConnectionsTable.addGlobalSecondaryIndex({
+      indexName: 'topic-index',
+      partitionKey: {
+        name: 'topicId',
+        type: AttributeType.STRING,
+      },
+      projectionType: ProjectionType.ALL,
+    });
+
+    const processQueue = new sqs.Queue(this, "ProcessQueue", {
+      visibilityTimeout: cdk.Duration.seconds(300), // Random wait requires more time
+      removalPolicy: props.config.removalPolicy,
+      queueName: "process-queue",
+    });
+
+    new ssm.StringParameter(this, "ProcessQueueUrlParam", {
+      parameterName: "/app/process-queue-url",
+      stringValue: processQueue.queueUrl,
+    });
+
+    new ssm.StringParameter(this, "WebsocketConnectionsTableParam", {
+      parameterName: "/app/websocket-connections-table-name",
+      stringValue: websocketConnectionsTable.tableName,
+    });
+
+    const processorFunction = backendLambda(this, "ProcessorFunction", {
+      deploymentConfig: props.config,
+      binaryName: "processor",
+      timeout: cdk.Duration.seconds(300),
+    });
+
+    processorFunction.addEventSource(new SqsEventSource(processQueue, {
+      batchSize: 10,
+    }));
+    websocketConnectionsTable.grantReadWriteData(processorFunction);
+    usersTable.grantReadData(processorFunction);
 
     // Locally cognito-local and cargo lambda watch are used instead
     if (deploymentConfig.aws) {
@@ -67,9 +108,12 @@ export class Backend extends Construct {
         userPool: this.userPool,
         usersTable,
         websocketConnectionsTable,
+        processQueue,
+        processorFunction,
       });
 
       this.restApi = api.gateway;
+      this.webSocketUrl = api.webSocketStage.callbackUrl;
     }
   }
 }

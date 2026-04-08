@@ -42,6 +42,13 @@ services:
       - AWS_SECRET_ACCESS_KEY=test
     volumes:
       - "./local/cognito-local-volume:/app/.cognito"
+  websocket-mock:
+    image: ghcr.io/wulf-data-engineering/levity-websocket-mock:latest
+    container_name: levity-test-websocket-mock
+    ports:
+      - "3001:3001"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 
 volumes:
   cognito-data:

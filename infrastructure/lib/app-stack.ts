@@ -33,6 +33,7 @@ export class AppStack extends cdk.Stack {
       new Frontend(this, 'Frontend', {
         config,
         backendApi: backend.restApi,
+        webSocketUrl: backend.webSocketUrl,
         userPool: backend.userPool,
         userPoolClient: backend.userPoolClient,
         hostedZone,

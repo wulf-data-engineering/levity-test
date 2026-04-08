@@ -32,6 +32,11 @@ export default defineConfig({
 					const withoutApi = path.replace(/^\/api/, '');
 					return `/lambda-url${withoutApi}/`;
 				}
+			},
+			'/api/websocket': {
+				target: 'ws://localhost:3001',
+				ws: true,
+				rewrite: (path) => path.replace(/^\/api\/websocket\/?/, '/')
 			}
 		}
 	}
