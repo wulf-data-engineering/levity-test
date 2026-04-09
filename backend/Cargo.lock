@@ -614,6 +614,7 @@ dependencies = [
  "serde_json",
  "snap",
  "tokio",
+ "tracing",
  "tracing-subscriber",
  "uuid",
  "wiremock",

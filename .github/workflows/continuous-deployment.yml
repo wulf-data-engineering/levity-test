@@ -20,51 +20,28 @@ jobs:
         with:
           path: backend-artifacts/
           key: backend-${{ steps.hash.outputs.source_hash }}
-
-      - name: Cache Rust Environment
+      - uses: Swatinem/rust-cache@v2
         if: steps.cache.outputs.cache-hit != 'true'
-        uses: actions/cache@v5
         with:
-          path: |
-            ~/.cargo-docker/registry
-            ~/.cargo-docker/rustup
-            ~/.cargo-docker/target
-          key: ${{ runner.os }}-rust-docker-${{ hashFiles('backend/rust-toolchain.toml') }}-${{ steps.hash.outputs.source_hash }}
-          restore-keys: |
-            ${{ runner.os }}-rust-docker-${{ hashFiles('backend/rust-toolchain.toml') }}
-            ${{ runner.os }}-rust-docker-
-
+          workspaces: ./backend
+          cache-on-failure: true
+      - name: Install Protoc
+        if: steps.cache.outputs.cache-hit != 'true'
+        uses: arduino/setup-protoc@v3
+      - name: Install cargo-lambda and Zig
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: |
+          pip install cargo-lambda ziglang
+          # Verify installations
+          cargo lambda --version
+          zig version
       - name: Cross-compile Backend and package artifacts
         if: steps.cache.outputs.cache-hit != 'true'
         run: |
-          # Create local folders to ensure permissions are manageable
-          mkdir -p ~/.cargo-docker/registry ~/.cargo-docker/rustup backend-artifacts
-          
-          docker run --rm \
-            --platform linux/amd64 \
-            -v ${{ github.workspace }}:/app \
-            -v ~/.cargo-docker/registry:/var/cargo/registry \
-            -v ~/.cargo-docker/rustup:/var/cargo/rustup \
-            -v ${{ github.workspace }}/backend/target:/var/cargo/target \
-            -w /app \
-            -e RUSTUP_HOME=/var/cargo/rustup \
-            -e CARGO_HOME=/var/cargo/registry \
-            -e CARGO_TARGET_DIR=/var/cargo/target \
-            -e CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-zig-cc \
-            -e CC_aarch64_unknown_linux_gnu=aarch64-zig-cc \
-            -e CXX_aarch64_unknown_linux_gnu=aarch64-zig-c++ \
-            -e AR_aarch64_unknown_linux_gnu=aarch64-zig-ar \
-            -e CMAKE_C_COMPILER=aarch64-zig-cc \
-            -e CMAKE_CXX_COMPILER=aarch64-zig-c++ \
-            ghcr.io/wulf-data-engineering/levity-lambda-builder:20260409 \
-            bash -c "cd backend && rustup target add aarch64-unknown-linux-gnu && \
-                     cargo build --release --target aarch64-unknown-linux-gnu && \
-                     collect-binaries aarch64-unknown-linux-gnu release /app/backend-artifacts"
-
-      # Docker runs as root; we must give ownership back to the GHA user so it can be saved.
-      - name: Post-build Cleanup
-        if: steps.cache.outputs.cache-hit != 'true'
-        run: sudo chown -R $(id -u):$(id -g) ~/.cargo-docker backend-artifacts
+          cargo lambda build --release --arm64
+          mkdir -p backend-artifacts
+          mv target/lambda/* backend-artifacts/
+          ls backend-artifacts/
           
       - name: Upload Backend Artifacts
         uses: actions/upload-artifact@v7

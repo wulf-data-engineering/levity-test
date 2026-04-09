@@ -19,7 +19,7 @@ git --version && \
 echo "cargo" && \ # mac: brew install rustup; linux: curl https://sh.rustup.rs -sSf | sh; win: winget install Rustlang.Rustup
 cargo --version && \
 echo "cargo lambda" && \ # cargo install cargo-lambda
-cargo lambda --version && \
+cargo lambda --version && \ # Should be above 1.9
 echo "cargo nextest" && \ # cargo install cargo-nextest --locked
 cargo nextest --version && \
 echo "npm" && \ # mac: brew install node; linux: sudo apt install nodejs npm; win: winget install OpenJS.NodeJS
