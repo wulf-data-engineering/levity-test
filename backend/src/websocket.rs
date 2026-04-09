@@ -4,7 +4,7 @@ use std::collections::{HashMap, HashSet};
 use once_cell::sync::Lazy;
 use anyhow::anyhow;
 #[cfg(any(debug_assertions, test))]
-use get_sub_from_authorization;
+use backend::get_sub_from_authorization;
 
 static TOPIC_WHITELIST: Lazy<HashSet<&'static str>> = Lazy::new(|| {
     let mut m = HashSet::new();

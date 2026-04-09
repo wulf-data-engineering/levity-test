@@ -79,14 +79,9 @@ function rustLambda(scope: Construct, id: string, props: BackendLambdaProps) {
     let code: lambda.Code;
     if (props.deploymentConfig.buildConfig.backendPath) {
         // Find the specific binary from the pre-built backend path
-        const binPath = path.resolve(process.cwd(), props.deploymentConfig.buildConfig.backendPath, props.binaryName);
-        if (!fs.existsSync(binPath)) throw new Error(`Pre-built binary not found: ${binPath}`);
-        
-        // AWS Lambda custom runtimes require the binary to be named 'bootstrap'
-        const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), `lambda-${props.binaryName}-`));
-        fs.copyFileSync(binPath, path.join(tempDir, 'bootstrap'));
-        fs.chmodSync(path.join(tempDir, 'bootstrap'), 0o755);
-        code = lambda.Code.fromAsset(tempDir);
+        const binFolder = path.resolve(process.cwd(), props.deploymentConfig.buildConfig.backendPath, props.binaryName);
+        if (!fs.existsSync(binFolder)) throw new Error(`Pre-built binary not found: ${binFolder}`);
+        code = lambda.Code.fromAsset(binFolder);
     } else if (props.deploymentConfig.buildConfig.build) {
         code = bundleRustCode(props.binaryName, props.deploymentConfig.mode === 'sandbox' ? 'sandbox' : 'release');
     } else {
