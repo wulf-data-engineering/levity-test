@@ -55,7 +55,7 @@ jobs:
             -e CXX_aarch64_unknown_linux_gnu=aarch64-zig-c++ \
             -e AR_aarch64_unknown_linux_gnu=aarch64-zig-ar \
             -e CMAKE_C_COMPILER=aarch64-zig-cc \
-            -e CMAKE_CXX_COMPILER=aarch64-zig-c++
+            -e CMAKE_CXX_COMPILER=aarch64-zig-c++ \
             ghcr.io/wulf-data-engineering/levity-lambda-builder:20260409 \
             bash -c "cd backend && rustup target add aarch64-unknown-linux-gnu && \
                      cargo build --release --target aarch64-unknown-linux-gnu && \
