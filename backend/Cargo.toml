@@ -39,7 +39,7 @@ base64 = "0.21"
 uuid = { version = "1.10", features = ["v4"] }
 aws-sdk-sqs = "1"
 aws-sdk-apigatewaymanagement = "1"
-rand = "0.8"
+rand = "0.10"
 aws-sdk-ssm = "1"
 
 [dev-dependencies]
