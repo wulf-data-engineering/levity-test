@@ -180,7 +180,7 @@ jobs:
         with:
           tool: cargo-lambda
       - name: Run docker compose
-        uses: hoverkraft-tech/compose-action@v2.5.0
+        uses: hoverkraft-tech/compose-action@v2.6.0
         with:
           github-token: ${{ github.token }}
           compose-file: docker-compose.yml
