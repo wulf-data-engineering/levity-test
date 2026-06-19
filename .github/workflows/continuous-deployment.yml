@@ -10,7 +10,7 @@ jobs:
   build-backend:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Calculate Hash
         id: hash
         run: echo "source_hash=${{ hashFiles('backend/**') }}" >> $GITHUB_OUTPUT
@@ -54,7 +54,7 @@ jobs:
   build-frontend:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Calculate Hash
         id: hash
         run: echo "source_hash=${{ hashFiles('frontend/**') }}" >> $GITHUB_OUTPUT
