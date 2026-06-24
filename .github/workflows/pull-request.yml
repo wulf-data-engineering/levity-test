@@ -11,7 +11,7 @@ jobs:
     name: Check Dependabot
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Validate dependabot.yml
         uses: marocchino/validate-dependabot@v3
         with:
@@ -21,7 +21,7 @@ jobs:
     name: Check Protocols
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: bufbuild/buf-setup-action@v1
         with:
           github_token: ${{ github.token }}
@@ -41,7 +41,7 @@ jobs:
       run:
         working-directory: backend
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: pull-request
@@ -87,7 +87,7 @@ jobs:
       run:
         working-directory: infrastructure
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Setup node
         uses: actions/setup-node@v6
         with:
@@ -103,13 +103,13 @@ jobs:
       run:
         working-directory: frontend
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Setup node
         uses: actions/setup-node@v6
         with:
           node-version: "24"
       - name: Restore cache
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: |
             ~/.npm
@@ -166,7 +166,7 @@ jobs:
     env:
       CI: "true"
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Install Protoc
         uses: arduino/setup-protoc@v3
         with:
@@ -180,7 +180,7 @@ jobs:
         with:
           tool: cargo-lambda
       - name: Run docker compose
-        uses: hoverkraft-tech/compose-action@v2.5.0
+        uses: hoverkraft-tech/compose-action@v3.0.0
         with:
           github-token: ${{ github.token }}
           compose-file: docker-compose.yml
@@ -190,7 +190,7 @@ jobs:
         with:
           node-version: "24"
       - name: Restore cache
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: |
             ~/.npm

@@ -10,13 +10,13 @@ jobs:
   build-backend:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Calculate Hash
         id: hash
         run: echo "source_hash=${{ hashFiles('backend/**') }}" >> $GITHUB_OUTPUT
       - name: Restore Backend Build
         id: cache
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: backend-artifacts/
           key: backend-${{ steps.hash.outputs.source_hash }}
@@ -54,13 +54,13 @@ jobs:
   build-frontend:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Calculate Hash
         id: hash
         run: echo "source_hash=${{ hashFiles('frontend/**') }}" >> $GITHUB_OUTPUT
       - name: Restore Frontend Build
         id: cache
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: frontend/build/
           key: frontend-${{ steps.hash.outputs.source_hash }}
